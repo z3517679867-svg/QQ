@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复古换装小屋</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      background: #f7efe7;
+      color: #5b4030;
+    }
+
+    .page {
+      width: 1100px;
+      max-width: 96%;
+      margin: 28px auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 30px;
+      margin: 0 0 24px;
+      color: #6b452e;
+      letter-spacing: 2px;
+    }
+
+    .main {
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+    }
+
+    .preview-box {
+      width: 270px;
+      background: #fff;
+      border: 1px solid #e4d2c2;
+      border-radius: 16px;
+      padding: 22px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(90, 60, 40, 0.12);
+      flex-shrink: 0;
+    }
+
+    .preview-title {
+      font-size: 17px;
+      font-weight: bold;
+      margin-bottom: 14px;
+      color: #6b452e;
+    }
+
+    .avatar-outer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      background: #f5eee7;
+      border-radius: 12px;
+      border: 1px dashed #d2bba7;
+      margin-bottom: 18px;
+    }
+
+    .avatar {
+      position: relative;
+      width: 140px;
+      height: 226px;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 140px;
+      height: 226px;
+      object-fit: contain;
+      pointer-events: none;
+      image-rendering: auto;
+    }
+
+    /*
+      图层顺序：从下到上
+      背景-前景装饰-翅膀-后发-衣服-上衣-下装-身体/脸-颈饰品-前发-帽子-眼镜-耳饰-脸饰品-手持物-特效-陪伴-文字装饰-相框
+
+      头发只使用一个素材文件夹：assets/hair
+      *_front 放前发层；*_back 放后发层，后发不显示分类按钮，会被前发自动带出。
+    */
+    #layer-background { z-index: 0; }
+    #layer-front { z-index: 10; }
+    #layer-wing { z-index: 20; }
+
+    #layer-hair-back { z-index: 25; }
+
+    #layer-clothes { z-index: 30; }
+    #layer-bottom { z-index: 31; }
+    #layer-top { z-index: 32; }
+
+    #layer-body { z-index: 40; }
+    #layer-neck { z-index: 50; }
+    #layer-hair { z-index: 60; }
+
+    #layer-hat { z-index: 70; }
+    #layer-glasses { z-index: 80; }
+    #layer-earring { z-index: 90; }
+    #layer-face { z-index: 100; }
+    #layer-hand { z-index: 110; }
+    #layer-effect { z-index: 120; }
+    #layer-partner { z-index: 130; }
+    #layer-text { z-index: 140; }
+    #layer-frame { z-index: 150; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .save-btn,
+    .reset-btn {
+      border: none;
+      color: #fff;
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .save-btn { background: #8b5e3c; }
+    .save-btn:hover { background: #6e4528; }
+
+    .reset-btn { background: #b9997b; }
+    .reset-btn:hover { background: #98775a; }
+
+    .panel {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #e4d2c2;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(90, 60, 40, 0.12);
+      min-height: 520px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee0d5;
+    }
+
+    .tabs button {
+      border: none;
+      background: #d9b99b;
+      color: #4f3424;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .tabs button:hover { background: #c9a17e; }
+
+    .tabs button.active {
+      background: #8b5e3c;
+      color: #fff;
+    }
+
+    .category-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      color: #6b452e;
+    }
+
+    .category-title {
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .category-count {
+      font-size: 13px;
+      color: #9a7a64;
+    }
+
+    .items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+      gap: 14px;
+      max-height: 640px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .item {
+      background: #faf7f3;
+      border: 1px solid #e5d9cc;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.15s;
+      min-height: 198px;
+    }
+
+    .item:hover {
+      border-color: #8b5e3c;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(90, 60, 40, 0.12);
+    }
+
+    .item.selected {
+      border-color: #8b5e3c;
+      background: #f3e4d6;
+    }
+
+    .item img {
+      width: 96px;
+      height: 155px;
+      object-fit: contain;
+      background: #eee;
+      border-radius: 6px;
+    }
+
+
+    /* 头发合成缩略图：后发 + 前发叠加显示 */
+    .hair-thumb {
+      position: relative;
+      width: 96px;
+      height: 155px;
+      margin: 0 auto;
+      background: #eee;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .hair-thumb img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 96px;
+      height: 155px;
+      object-fit: contain;
+      background: transparent;
+      border-radius: 0;
+    }
+
+    .hair-back-thumb {
+      z-index: 1;
+    }
+
+    .hair-front-thumb {
+      z-index: 2;
+    }
+
+    .item-name {
+      font-size: 13px;
+      margin-top: 8px;
+      color: #5b4030;
+      word-break: break-all;
+      line-height: 1.35;
+    }
+
+    .empty-item {
+      width: 96px;
+      height: 155px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eee;
+      color: #777;
+      font-size: 13px;
+      border-radius: 6px;
+    }
+
+    .warning {
+      background: #fff7e6;
+      border: 1px solid #f0d49b;
+      color: #8a611f;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .page {
+        width: 100%;
+        max-width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        margin: 0;
+        padding: 0 10px 12px;
+        overflow: hidden;
+      }
+
+      h1 { display: none; }
+
+      .main {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: hidden;
+      }
+
+      .preview-box {
+        flex: 0 0 auto;
+        width: 100%;
+        padding: 4px 10px 6px;
+        border-radius: 0 0 14px 14px;
+        box-shadow: 0 8px 18px rgba(90, 60, 40, 0.14);
+        overflow: visible;
+      }
+
+      .preview-title { display: none; }
+
+      .avatar-outer {
+        align-items: flex-start;
+        min-height: 350px;
+        padding: 2px 10px 0;
+        margin-bottom: 4px;
+        overflow: visible;
+      }
+
+      .avatar {
+        transform: translateY(-12px) scale(1.52);
+        transform-origin: top center;
+        overflow: visible;
+      }
+
+      .btn-row {
+        position: relative;
+        z-index: 1200;
+        margin-top: 0;
+        padding: 2px 0;
+        background: #fff;
+        border-radius: 8px;
+      }
+
+      .save-btn,
+      .reset-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        line-height: 1.2;
+        border-radius: 7px;
+      }
+
+      .panel {
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 0;
+        border-radius: 12px 12px 0 0;
+        box-shadow: none;
+      }
+
+      .tabs {
+        flex: 0 0 auto;
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 4px;
+        margin: 0;
+        padding: 4px 6px;
+        background: #fff;
+        border-bottom: 1px solid #eee0d5;
+        box-shadow: 0 3px 8px rgba(90, 60, 40, 0.08);
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .tabs::-webkit-scrollbar { display: none; }
+
+      .tabs button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 5px 7px;
+        font-size: 12px;
+        line-height: 1.1;
+        border-radius: 6px;
+      }
+
+      .category-head {
+        flex: 0 0 auto;
+        padding: 7px 10px 5px;
+        margin-bottom: 0;
+        background: #fff;
+        border-bottom: 1px solid #f1e5db;
+      }
+
+      .category-title { font-size: 14px; }
+      .category-count { font-size: 11px; }
+
+      .items {
+        flex: 1 1 auto;
+        min-height: 0;
+        grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+        gap: 9px;
+        max-height: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 8px 8px 16px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .item {
+        min-height: 136px;
+        padding: 6px;
+        border-radius: 9px;
+      }
+
+      .item img,
+      .empty-item {
+        width: 62px;
+        height: 100px;
+        border-radius: 6px;
+      }
+
+
+      .hair-thumb {
+        width: 62px;
+        height: 100px;
+        border-radius: 6px;
+      }
+
+      .hair-thumb img {
+        width: 62px;
+        height: 100px;
+      }
+
+      .item-name {
+        font-size: 11px;
+        margin-top: 5px;
+        line-height: 1.25;
+      }
+    }
+  </style>
+
+  <!-- Google Analytics 4 统计代码
+       使用前必须把下面两个 G-XXXXXXXXXX 改成你自己的 GA4 Measurement ID
+       示例：G-ABC1234567
+  -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EV19MGWG07"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+
+    gtag("config", "G-EV19MGWG07");
+  </script>
+
+</head>
+
+<body>
+  <div class="page">
+    <h1>复古换装小屋</h1>
+
+    <div class="main">
+      <div class="preview-box">
+        <div class="preview-title">当前形象</div>
+
+        <div class="avatar-outer">
+          <div id="avatar" class="avatar">
+            <img id="layer-background" class="layer" alt="">
+            <img id="layer-front" class="layer" alt="">
+            <img id="layer-wing" class="layer" alt="">
+            <img id="layer-hair-back" class="layer" alt="">
+            <img id="layer-clothes" class="layer" alt="">
+            <img id="layer-bottom" class="layer" alt="">
+            <img id="layer-top" class="layer" alt="">
+            <img id="layer-body" class="layer" alt="">
+            <img id="layer-neck" class="layer" alt="">
+            <img id="layer-hair" class="layer" alt="">
+            <img id="layer-hat" class="layer" alt="">
+            <img id="layer-glasses" class="layer" alt="">
+            <img id="layer-earring" class="layer" alt="">
+            <img id="layer-face" class="layer" alt="">
+            <img id="layer-hand" class="layer" alt="">
+            <img id="layer-effect" class="layer" alt="">
+            <img id="layer-partner" class="layer" alt="">
+            <img id="layer-text" class="layer" alt="">
+            <img id="layer-frame" class="layer" alt="">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="save-btn" onclick="saveAvatar()">保存图片</button>
+          <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div id="itemsWarning"></div>
+
+        <div class="tabs" id="tabs"></div>
+
+        <div class="category-head">
+          <div class="category-title" id="categoryTitle">背景</div>
+          <div class="category-count" id="categoryCount">0 个素材</div>
+        </div>
+
+        <div class="items" id="items"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 这个文件由“生成素材清单.py”自动生成 -->
+  <script src="items.js"></script>
+
+  <script>
+    const ITEMS = window.ITEMS || {};
+
+    /*
+      显示在页面上的分类。
+      hair_back 不显示为分类按钮，只用于自动匹配后发。
+    */
+    const CATEGORY_ORDER = [
+      "background",
+      "front",
+      "wing",
+      "clothes",
+      "bottom",
+      "top",
+      "body",
+      "neck",
+      "hair",
+      "hat",
+      "glasses",
+      "earring",
+      "face",
+      "hand",
+      "effect",
+      "partner",
+      "text",
+      "frame"
+    ];
+
+    /*
+      实际图层顺序。
+      这里包含 hair_back。
+    */
+    const LAYER_ORDER = [
+      "background",
+      "front",
+      "wing",
+      "hair_back",
+      "clothes",
+      "bottom",
+      "top",
+      "body",
+      "neck",
+      "hair",
+      "hat",
+      "glasses",
+      "earring",
+      "face",
+      "hand",
+      "effect",
+      "partner",
+      "text",
+      "frame"
+    ];
+
+    const CATEGORY_NAME = {
+      background: "背景",
+      front: "前景装饰",
+      wing: "翅膀",
+      clothes: "衣服",
+      top: "上衣",
+      bottom: "下装",
+      body: "身体/脸",
+      neck: "颈饰品",
+      hair: "头发",
+      hat: "帽子",
+      glasses: "眼镜",
+      earring: "耳饰",
+      face: "脸饰品",
+      hand: "手持物",
+      effect: "特效",
+      partner: "陪伴",
+      text: "文字装饰",
+      frame: "相框"
+    };
+
+    const LAYER_ID = {
+      background: "layer-background",
+      front: "layer-front",
+      wing: "layer-wing",
+      clothes: "layer-clothes",
+      top: "layer-top",
+      bottom: "layer-bottom",
+      hair_back: "layer-hair-back",
+      body: "layer-body",
+      neck: "layer-neck",
+      hair: "layer-hair",
+      hat: "layer-hat",
+      glasses: "layer-glasses",
+      earring: "layer-earring",
+      face: "layer-face",
+      hand: "layer-hand",
+      effect: "layer-effect",
+      partner: "layer-partner",
+      text: "layer-text",
+      frame: "layer-frame"
+    };
+
+    const DRAW_ORDER = [
+      "background",
+      "front",
+      "wing",
+      "hair_back",
+      "clothes",
+      "bottom",
+      "top",
+      "body",
+      "neck",
+      "hair",
+      "hat",
+      "glasses",
+      "earring",
+      "face",
+      "hand",
+      "effect",
+      "partner",
+      "text",
+      "frame"
+    ];
+
+    const state = {};
+    LAYER_ORDER.forEach(category => {
+      state[category] = "";
+    });
+
+    const EMPTY_OPTIONS = {
+      background: "空白背景",
+      front: "无前景装饰",
+      wing: "无翅膀",
+      clothes: "不穿整套",
+      top: "不穿上衣",
+      bottom: "不穿下装",
+      neck: "无颈饰品",
+      hair: "无头发",
+      hat: "不戴帽子",
+      glasses: "不戴眼镜",
+      earring: "不戴耳饰",
+      face: "无脸饰品",
+      hand: "不拿物品",
+      effect: "无特效",
+      partner: "无陪伴",
+      text: "无文字装饰",
+      frame: "无相框"
+    };
+
+    let currentCategory = "background";
+
+    function init() {
+      ensureCategories();
+      checkItemsLoaded();
+      createTabs();
+      setDefaultAvatar();
+      renderItems(currentCategory);
+      updateClothesVisibility();
+    }
+
+    function ensureCategories() {
+      LAYER_ORDER.forEach(category => {
+        if (!ITEMS[category]) {
+          ITEMS[category] = [];
+        }
+      });
+
+      CATEGORY_ORDER.forEach(category => {
+        if (EMPTY_OPTIONS[category]) {
+          const hasEmpty = ITEMS[category].some(item => item.src === "");
+          if (!hasEmpty) {
+            ITEMS[category].unshift({
+              name: EMPTY_OPTIONS[category],
+              src: ""
+            });
+          }
+        }
+      });
+    }
+
+    function checkItemsLoaded() {
+      const warningBox = document.getElementById("itemsWarning");
+
+      if (!window.ITEMS) {
+        warningBox.innerHTML = `
+          <div class="warning">
+            没有检测到 <b>items.js</b>。<br>
+            请先运行 <b>生成素材清单.py</b>，生成 items.js 后再刷新网页。
+          </div>
+        `;
+        return;
+      }
+
+      warningBox.innerHTML = "";
+    }
+
+    function createTabs() {
+      const tabs = document.getElementById("tabs");
+      tabs.innerHTML = "";
+
+      CATEGORY_ORDER.forEach(category => {
+        const btn = document.createElement("button");
+        btn.innerText = CATEGORY_NAME[category];
+        btn.setAttribute("data-category", category);
+
+        btn.onclick = function () {
+          trackGAEvent("category_click", {
+            item_category: category
+          });
+
+          currentCategory = category;
+          renderItems(category);
+          updateTabStatus();
+        };
+
+        tabs.appendChild(btn);
+      });
+
+      updateTabStatus();
+    }
+
+    function updateTabStatus() {
+      document.querySelectorAll("#tabs button").forEach(btn => {
+        btn.classList.remove("active");
+
+        if (btn.getAttribute("data-category") === currentCategory) {
+          btn.classList.add("active");
+        }
+      });
+    }
+
+    function setDefaultAvatar() {
+      CATEGORY_ORDER.forEach(category => {
+        const list = ITEMS[category] || [];
+
+        if (list.length > 0) {
+          chooseItem(category, list[0].src, true);
+        } else {
+          clearLayer(category);
+        }
+      });
+
+      autoChooseHairBack(state.hair);
+    }
+
+    function renderItems(category) {
+      const box = document.getElementById("items");
+      const title = document.getElementById("categoryTitle");
+      const count = document.getElementById("categoryCount");
+
+      box.innerHTML = "";
+
+      const list = ITEMS[category] || [];
+
+      title.innerText = CATEGORY_NAME[category];
+      count.innerText = list.length + " 个素材";
+
+      if (list.length === 0) {
+        box.innerHTML = `
+          <div class="warning">
+            当前分类没有素材。<br>
+            请把图片放入 <b>assets/${category}</b> 文件夹，然后运行 <b>生成素材清单.py</b>。
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item";
+
+        if (state[category] === item.src) {
+          div.classList.add("selected");
+        }
+
+        if (item.src) {
+          if (category === "hair") {
+            const backSrc = getMatchedHairBackSrc(item.src);
+
+            if (backSrc) {
+              div.innerHTML = `
+                <div class="hair-thumb">
+                  <img class="hair-back-thumb" src="${backSrc}" alt="" loading="lazy">
+                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy">
+                </div>
+                <div class="item-name">${item.name}</div>
+              `;
+            } else {
+              div.innerHTML = `
+                <div class="hair-thumb">
+                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy">
+                </div>
+                <div class="item-name">${item.name}</div>
+              `;
+            }
+          } else {
+            div.innerHTML = `
+              <img src="${item.src}" alt="${item.name}" loading="lazy">
+              <div class="item-name">${item.name}</div>
+            `;
+          }
+        } else {
+          div.innerHTML = `
+            <div class="empty-item">不使用</div>
+            <div class="item-name">${item.name}</div>
+          `;
+        }
+
+        div.onclick = function () {
+          chooseItem(category, item.src, false);
+          renderItems(category);
+        };
+
+        box.appendChild(div);
+      });
+    }
+
+    function chooseItem(category, src, isInit = false) {
+      /*
+        如果选中了“整套衣服”，自动清空上衣和下装。
+      */
+      if (category === "clothes" && src) {
+        state.top = "";
+        state.bottom = "";
+        applyLayer("top");
+        applyLayer("bottom");
+      }
+
+      state[category] = src;
+      applyLayer(category);
+
+      /*
+        如果选中头发，自动匹配同一个 assets/hair 文件夹里的后发。
+      */
+      if (category === "hair") {
+        autoChooseHairBack(src);
+      }
+
+      updateClothesVisibility();
+
+      if (!isInit) {
+        trackGAEvent("choose_item", {
+          item_category: category,
+          has_item: src ? "yes" : "no"
+        });
+
+        updateTabStatus();
+      }
+    }
+
+    function applyLayer(category) {
+      const img = document.getElementById(LAYER_ID[category]);
+      const src = state[category];
+
+      if (!img) return;
+
+      if (src) {
+        img.src = src;
+        img.style.display = "block";
+      } else {
+        img.removeAttribute("src");
+        img.style.display = "none";
+      }
+    }
+
+    function clearLayer(category) {
+      state[category] = "";
+      applyLayer(category);
+    }
+
+    function getHairMatchKey(src) {
+      if (!src) return "";
+
+      const fileName = src.split("/").pop() || "";
+
+      return fileName
+        .toLowerCase()
+        .replace(/\.[^.]+$/, "")
+        .replace(/_front$/, "")
+        .replace(/_back$/, "")
+        .replace(/^front_/, "")
+        .replace(/^back_/, "");
+    }
+
+
+    function getMatchedHairBackSrc(frontSrc) {
+      if (!frontSrc) return "";
+
+      const frontKey = getHairMatchKey(frontSrc);
+      const backList = ITEMS.hair_back || [];
+
+      const matchedBack = backList.find(item => {
+        if (!item.src) return false;
+        return getHairMatchKey(item.src) === frontKey;
+      });
+
+      return matchedBack ? matchedBack.src : "";
+    }
+
+    function autoChooseHairBack(frontSrc) {
+      /*
+        取消头发时，后发也清空。
+      */
+      if (!frontSrc) {
+        state.hair_back = "";
+        applyLayer("hair_back");
+        return;
+      }
+
+      const frontKey = getHairMatchKey(frontSrc);
+      const backList = ITEMS.hair_back || [];
+
+      const matchedBack = backList.find(item => {
+        if (!item.src) return false;
+        return getHairMatchKey(item.src) === frontKey;
+      });
+
+      if (matchedBack) {
+        state.hair_back = matchedBack.src;
+      } else {
+        state.hair_back = "";
+      }
+
+      applyLayer("hair_back");
+    }
+
+    function updateClothesVisibility() {
+      const clothesImg = document.getElementById("layer-clothes");
+      const hasTop = !!state.top;
+      const hasBottom = !!state.bottom;
+
+      if (!clothesImg) return;
+
+      if (hasTop || hasBottom) {
+        clothesImg.style.display = "none";
+      } else {
+        clothesImg.style.display = state.clothes ? "block" : "none";
+      }
+    }
+
+    function resetAvatar() {
+      trackGAEvent("reset_avatar");
+
+      setDefaultAvatar();
+      renderItems(currentCategory);
+      updateClothesVisibility();
+    }
+
+    function saveAvatar() {
+      trackGAEvent("save_avatar");
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 140;
+      canvas.height = 226;
+
+      const ctx = canvas.getContext("2d");
+
+      let index = 0;
+
+      function drawNext() {
+        if (index >= DRAW_ORDER.length) {
+          const link = document.createElement("a");
+          link.download = "my-avatar.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          return;
+        }
+
+        const category = DRAW_ORDER[index];
+        index++;
+
+        /*
+          上衣或下装出现时，保存图片也不绘制整套衣服。
+        */
+        if (category === "clothes" && (state.top || state.bottom)) {
+          drawNext();
+          return;
+        }
+
+        const src = state[category];
+
+        if (!src) {
+          drawNext();
+          return;
+        }
+
+        const img = new Image();
+
+        img.onload = function () {
+          ctx.drawImage(img, 0, 0, 140, 226);
+          drawNext();
+        };
+
+        img.onerror = function () {
+          console.log("图片加载失败：", src);
+          drawNext();
+        };
+
+        img.src = src;
+      }
+
+      drawNext();
+    }
+
+
+    function trackGAEvent(eventName, params = {}) {
+      if (typeof gtag === "function") {
+        gtag("event", eventName, params);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
