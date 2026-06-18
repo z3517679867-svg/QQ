@@ -160,10 +160,11 @@
       border: none;
       background: #d9b99b;
       color: #4f3424;
-      padding: 8px 14px;
-      border-radius: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: 600;
     }
 
     .tabs button:hover { background: #c9a17e; }
@@ -412,9 +413,9 @@
         flex-wrap: nowrap;
         overflow-x: auto;
         overflow-y: hidden;
-        gap: 4px;
+        gap: 7px;
         margin: 0;
-        padding: 4px 6px;
+        padding: 8px 8px;
         background: #fff;
         border-bottom: 1px solid #eee0d5;
         box-shadow: 0 3px 8px rgba(90, 60, 40, 0.08);
@@ -426,10 +427,10 @@
       .tabs button {
         flex: 0 0 auto;
         white-space: nowrap;
-        padding: 5px 7px;
-        font-size: 12px;
-        line-height: 1.1;
-        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 14px;
+        line-height: 1.15;
+        border-radius: 8px;
       }
 
       .category-head {
@@ -489,16 +490,16 @@
   </style>
 
   <!-- Google Analytics 4 统计代码
-       使用前必须把下面两个 G-XXXXXXXXXX 改成你自己的 GA4 Measurement ID
+       使用前必须把下面两个 G-EV19MGWG07 改成你自己的 GA4 Measurement ID
        示例：G-ABC1234567
   -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EV19MGWG07"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag("js", new Date());
 
-    gtag("config", "G-XXXXXXXXXX");
+    gtag("config", "G-EV19MGWG07");
   </script>
 
 </head>
@@ -708,12 +709,13 @@
 
     /*
       防卡顿设置：
-      1. 手机端每次只显示 30 个素材，网页端每次显示 60 个素材。
-      2. 用户点击“加载更多”后再继续显示下一批。
+      1. 手机端每次先显示 30 个素材，网页端每次先显示 60 个素材。
+      2. 用户滑到素材列表底部附近时，自动加载下一批，不再显示“自动加载更多”按钮。
       3. 当前搭配自动保存到 localStorage，刷新后自动恢复。
     */
     const STORAGE_KEY = "qqshow_avatar_state_v4";
     const visibleCounts = {};
+    let autoLoadTimer = null;
 
     function getBatchSize() {
       return window.innerWidth <= 760 ? 30 : 60;
@@ -724,7 +726,35 @@
     }
 
     function increaseVisibleCount(category) {
-      visibleCounts[category] = getVisibleCount(category) + getBatchSize();
+      const list = ITEMS[category] || [];
+      visibleCounts[category] = Math.min(getVisibleCount(category) + getBatchSize(), list.length);
+    }
+
+    function setupAutoLoadScroll() {
+      const box = document.getElementById("items");
+
+      if (!box) return;
+
+      box.addEventListener("scroll", function () {
+        if (autoLoadTimer) return;
+
+        autoLoadTimer = setTimeout(function () {
+          autoLoadTimer = null;
+
+          const list = ITEMS[currentCategory] || [];
+          const currentVisible = getVisibleCount(currentCategory);
+
+          if (currentVisible >= list.length) return;
+
+          const distanceToBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+
+          if (distanceToBottom < 360) {
+            const previousScrollTop = box.scrollTop;
+            increaseVisibleCount(currentCategory);
+            renderItems(currentCategory, { preserveScrollTop: previousScrollTop });
+          }
+        }, 120);
+      }, { passive: true });
     }
 
     function init() {
@@ -733,6 +763,7 @@
       createTabs();
       restoreSavedAvatar();
       renderItems(currentCategory);
+      setupAutoLoadScroll();
       updateClothesVisibility();
     }
 
@@ -787,7 +818,7 @@
           });
 
           currentCategory = category;
-          renderItems(category);
+          renderItems(category, { resetScrollTop: true });
           updateTabStatus();
         };
 
@@ -878,10 +909,13 @@
       }
     }
 
-    function renderItems(category) {
+    function renderItems(category, options = {}) {
       const box = document.getElementById("items");
       const title = document.getElementById("categoryTitle");
       const count = document.getElementById("categoryCount");
+
+      const preserveScrollTop = options.preserveScrollTop;
+      const shouldResetScrollTop = options.resetScrollTop;
 
       box.innerHTML = "";
 
@@ -959,7 +993,7 @@
 
         div.onclick = function () {
           chooseItem(category, item.src, false);
-          renderItems(category);
+          renderItems(category, { preserveScrollTop: box.scrollTop });
         };
 
         box.appendChild(div);
@@ -967,27 +1001,18 @@
 
       if (visibleCount < list.length) {
         const note = document.createElement("div");
-        note.className = "load-more-note";
-        note.innerText = "为防止手机卡顿，当前只加载部分素材";
+        note.className = "auto-load-note";
+        note.innerText = "继续向下滑动，自动自动加载更多素材（" + visibleCount + "/" + list.length + "）";
         box.appendChild(note);
+      }
 
-        const wrap = document.createElement("div");
-        wrap.className = "load-more-wrap";
-
-        const btn = document.createElement("button");
-        btn.className = "load-more-btn";
-        btn.type = "button";
-        btn.innerText = "加载更多（" + visibleCount + "/" + list.length + "）";
-
-        btn.onclick = function () {
-          increaseVisibleCount(category);
-          renderItems(category);
-        };
-
-        wrap.appendChild(btn);
-        box.appendChild(wrap);
+      if (typeof preserveScrollTop === "number") {
+        box.scrollTop = preserveScrollTop;
+      } else if (shouldResetScrollTop) {
+        box.scrollTop = 0;
       }
     }
+
 
     function chooseItem(category, src, isInit = false) {
       /*
