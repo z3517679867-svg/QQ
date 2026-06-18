@@ -489,167 +489,268 @@
     }
   
     /* =========================
-       风格覆盖：蓝白 QQ 空间风
-       只改视觉，不改功能逻辑
+       风格覆盖：黑紫霓虹风
+       只改视觉，不改核心功能逻辑
+       保留：自动保存、滑到底自动加载、GA4、头发合成缩略图
        ========================= */
+
     body {
       background:
-        radial-gradient(circle at 12% 8%, rgba(143, 194, 255, 0.45), transparent 28%),
-        radial-gradient(circle at 88% 16%, rgba(203, 228, 255, 0.55), transparent 30%),
-        linear-gradient(180deg, #f7fbff 0%, #eaf4ff 45%, #ffffff 100%);
-      color: #1f3c68;
+        radial-gradient(circle at 12% 10%, rgba(169, 54, 255, 0.24), transparent 28%),
+        radial-gradient(circle at 86% 12%, rgba(0, 209, 255, 0.16), transparent 30%),
+        radial-gradient(circle at 50% 92%, rgba(255, 46, 205, 0.18), transparent 36%),
+        linear-gradient(180deg, #070612 0%, #100923 45%, #070612 100%);
+      color: #f2eaff;
     }
 
     .page {
       position: relative;
     }
 
+    .page::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0.18));
+      z-index: -1;
+    }
+
     h1 {
-      color: #1e66c9;
-      text-shadow: 0 3px 0 rgba(255,255,255,0.9);
-      letter-spacing: 3px;
+      color: #ffffff;
+      letter-spacing: 4px;
+      text-shadow:
+        0 0 8px rgba(255, 52, 214, 0.95),
+        0 0 18px rgba(154, 81, 255, 0.75),
+        0 0 28px rgba(0, 214, 255, 0.45);
     }
 
     h1::before {
-      content: "☁ ";
-      color: #72aefa;
+      content: "✦ ";
+      color: #ff39d6;
+      text-shadow: 0 0 14px rgba(255, 57, 214, 0.95);
     }
 
     h1::after {
       content: " ✦";
-      color: #72aefa;
+      color: #00d6ff;
+      text-shadow: 0 0 14px rgba(0, 214, 255, 0.9);
     }
 
     .preview-box,
     .panel {
-      background: rgba(255, 255, 255, 0.88);
-      border: 2px solid #a9cdfc;
+      background:
+        linear-gradient(180deg, rgba(18, 12, 38, 0.92), rgba(11, 8, 24, 0.94));
+      border: 1px solid rgba(180, 91, 255, 0.82);
       box-shadow:
-        0 12px 30px rgba(65, 132, 221, 0.16),
-        inset 0 1px 0 rgba(255,255,255,0.9);
-      backdrop-filter: blur(8px);
+        0 0 0 1px rgba(255, 72, 218, 0.16) inset,
+        0 0 22px rgba(147, 75, 255, 0.28),
+        0 16px 40px rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(10px);
     }
 
     .preview-title,
     .category-title {
-      color: #1d64bd;
+      color: #ffffff;
+      text-shadow:
+        0 0 8px rgba(255, 64, 218, 0.8),
+        0 0 15px rgba(0, 214, 255, 0.35);
     }
 
     .avatar-outer {
+      position: relative;
       background:
-        linear-gradient(180deg, rgba(208,232,255,0.85), rgba(255,255,255,0.92)),
-        radial-gradient(circle at center, rgba(255,255,255,0.8), transparent 65%);
-      border: 2px dashed #8ebdff;
-      box-shadow: inset 0 0 0 4px rgba(255,255,255,0.55);
+        radial-gradient(circle at 50% 38%, rgba(104, 58, 255, 0.34), transparent 46%),
+        radial-gradient(circle at 50% 84%, rgba(0, 214, 255, 0.16), transparent 42%),
+        linear-gradient(180deg, rgba(22, 13, 48, 0.95), rgba(7, 6, 18, 0.96));
+      border: 1px solid rgba(255, 65, 218, 0.62);
+      box-shadow:
+        inset 0 0 26px rgba(0, 214, 255, 0.10),
+        0 0 26px rgba(255, 65, 218, 0.22);
+      overflow: hidden;
     }
 
     .avatar-outer::before {
-      content: "QQ SPACE";
+      content: "";
       position: absolute;
-      opacity: 0.08;
-      font-weight: 900;
-      font-size: 26px;
-      letter-spacing: 2px;
-      color: #1767d0;
+      left: -20%;
+      right: -20%;
+      bottom: 18px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 214, 255, 0.85), rgba(255, 65, 218, 0.75), transparent);
+      box-shadow:
+        0 -22px 0 rgba(0, 214, 255, 0.12),
+        0 -44px 0 rgba(255, 65, 218, 0.10),
+        0 -66px 0 rgba(0, 214, 255, 0.08);
+      transform: perspective(140px) rotateX(60deg);
+      transform-origin: bottom center;
+    }
+
+    .avatar-outer::after {
+      content: "NEON DRESS UP";
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      color: rgba(0, 214, 255, 0.75);
+      text-shadow: 0 0 10px rgba(0, 214, 255, 0.85);
     }
 
     .tabs {
-      background: linear-gradient(180deg, rgba(239, 247, 255, 0.95), rgba(255,255,255,0.95));
-      border-bottom: 1px solid #c7dfff;
+      background: linear-gradient(180deg, rgba(18, 12, 38, 0.98), rgba(12, 8, 26, 0.98));
+      border-bottom: 1px solid rgba(180, 91, 255, 0.35);
     }
 
     .tabs button {
-      background: linear-gradient(180deg, #ffffff, #dcebff);
-      color: #1d64bd;
-      border: 1px solid #9fc7ff;
-      box-shadow: 0 3px 0 rgba(134, 184, 245, 0.35);
+      background:
+        linear-gradient(180deg, rgba(30, 18, 66, 0.95), rgba(14, 10, 30, 0.95));
+      color: #e9dcff;
+      border: 1px solid rgba(166, 90, 255, 0.60);
+      box-shadow:
+        0 0 10px rgba(146, 82, 255, 0.16),
+        inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
     .tabs button:hover {
-      background: linear-gradient(180deg, #ffffff, #cfe4ff);
+      color: #ffffff;
+      border-color: rgba(0, 214, 255, 0.85);
+      box-shadow:
+        0 0 16px rgba(0, 214, 255, 0.22),
+        0 0 20px rgba(255, 65, 218, 0.12);
       transform: translateY(-1px);
     }
 
     .tabs button.active {
-      background: linear-gradient(180deg, #4fa2ff, #1f72df);
-      color: #fff;
-      border-color: #1f72df;
-      box-shadow: 0 4px 12px rgba(31, 114, 223, 0.35);
+      color: #ffffff;
+      background: linear-gradient(135deg, #ff2ed2 0%, #8b4dff 55%, #00d6ff 100%);
+      border-color: rgba(255, 255, 255, 0.38);
+      box-shadow:
+        0 0 16px rgba(255, 46, 210, 0.55),
+        0 0 28px rgba(0, 214, 255, 0.28);
     }
 
     .save-btn {
-      background: linear-gradient(180deg, #4fa2ff, #1f72df);
-      box-shadow: 0 5px 14px rgba(31, 114, 223, 0.28);
+      background: linear-gradient(135deg, #ff2ed2 0%, #8b4dff 55%, #00d6ff 100%);
+      box-shadow:
+        0 0 16px rgba(255, 46, 210, 0.42),
+        0 8px 22px rgba(0, 0, 0, 0.38);
     }
 
     .save-btn:hover {
-      background: linear-gradient(180deg, #318cf4, #145fc4);
+      background: linear-gradient(135deg, #ff0fca 0%, #7640ef 55%, #00bdea 100%);
+      box-shadow:
+        0 0 22px rgba(255, 46, 210, 0.56),
+        0 0 28px rgba(0, 214, 255, 0.24);
     }
 
     .reset-btn {
-      background: linear-gradient(180deg, #a9d2ff, #74aef4);
-      box-shadow: 0 5px 14px rgba(68, 143, 232, 0.2);
+      background: linear-gradient(180deg, #2c1d5d, #15102d);
+      color: #f2eaff;
+      border: 1px solid rgba(0, 214, 255, 0.50);
+      box-shadow: 0 0 14px rgba(0, 214, 255, 0.18);
     }
 
     .reset-btn:hover {
-      background: linear-gradient(180deg, #8fc2fb, #5595e5);
+      background: linear-gradient(180deg, #3b2878, #1d153c);
+      box-shadow: 0 0 20px rgba(0, 214, 255, 0.26);
     }
 
     .category-head {
-      color: #1d64bd;
+      color: #f2eaff;
     }
 
     .category-count {
-      color: #6c94c7;
+      color: #9bdcff;
+      text-shadow: 0 0 10px rgba(0, 214, 255, 0.35);
+    }
+
+    .items {
+      scrollbar-width: thin;
+      scrollbar-color: #8b4dff rgba(255,255,255,0.06);
+    }
+
+    .items::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .items::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+    }
+
+    .items::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #ff2ed2, #00d6ff);
+      border-radius: 10px;
     }
 
     .item {
-      background: linear-gradient(180deg, #ffffff, #f0f7ff);
-      border: 1px solid #c3ddff;
-      box-shadow: 0 3px 10px rgba(68, 143, 232, 0.08);
+      background:
+        linear-gradient(180deg, rgba(27, 18, 60, 0.94), rgba(12, 9, 27, 0.96));
+      border: 1px solid rgba(147, 84, 255, 0.58);
+      box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255,255,255,0.07);
     }
 
     .item:hover {
-      border-color: #4f9fff;
-      box-shadow: 0 8px 18px rgba(68, 143, 232, 0.20);
+      border-color: rgba(0, 214, 255, 0.88);
+      box-shadow:
+        0 0 18px rgba(0, 214, 255, 0.22),
+        0 0 24px rgba(255, 46, 210, 0.13),
+        0 9px 24px rgba(0, 0, 0, 0.35);
     }
 
     .item.selected {
-      border-color: #1f72df;
-      background: linear-gradient(180deg, #e7f3ff, #cfe5ff);
-      box-shadow: 0 0 0 2px rgba(79, 162, 255, 0.25);
+      background:
+        linear-gradient(180deg, rgba(55, 28, 104, 0.96), rgba(18, 11, 42, 0.98));
+      border-color: #ff2ed2;
+      box-shadow:
+        0 0 0 2px rgba(255, 46, 210, 0.22),
+        0 0 22px rgba(255, 46, 210, 0.35),
+        0 0 26px rgba(0, 214, 255, 0.18);
     }
 
     .item img,
     .empty-item,
     .hair-thumb {
-      background: linear-gradient(180deg, #f9fcff, #e8f3ff);
-      border: 1px solid #c7dfff;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(120, 78, 255, 0.22), transparent 60%),
+        linear-gradient(180deg, rgba(18, 12, 42, 0.95), rgba(8, 7, 18, 0.98));
+      border: 1px solid rgba(0, 214, 255, 0.30);
+      box-shadow: inset 0 0 14px rgba(0, 214, 255, 0.06);
     }
 
     .item-name {
-      color: #1f3c68;
+      color: #f1e8ff;
+      text-shadow: 0 0 8px rgba(147, 84, 255, 0.26);
     }
 
     .empty-item {
-      color: #6c94c7;
+      color: #bda8f4;
     }
 
     .warning {
-      background: #eef7ff;
-      border-color: #a9cdfc;
-      color: #1d64bd;
+      background: rgba(28, 18, 62, 0.95);
+      border-color: rgba(255, 46, 210, 0.45);
+      color: #f2eaff;
     }
 
     .auto-load-note {
-      color: #4b83c8;
+      color: #9bdcff;
+      text-shadow: 0 0 10px rgba(0, 214, 255, 0.30);
     }
 
     @media (max-width: 760px) {
       body {
         background:
-          radial-gradient(circle at 20% 8%, rgba(143, 194, 255, 0.50), transparent 30%),
-          linear-gradient(180deg, #f6fbff 0%, #eaf4ff 58%, #ffffff 100%);
+          radial-gradient(circle at 10% 4%, rgba(169, 54, 255, 0.22), transparent 32%),
+          radial-gradient(circle at 90% 7%, rgba(0, 209, 255, 0.14), transparent 34%),
+          linear-gradient(180deg, #070612 0%, #100923 58%, #070612 100%);
       }
 
       .preview-box {
@@ -658,16 +759,16 @@
         border-top: none;
       }
 
-      .panel {
-        border-color: #a9cdfc;
-      }
-
       .tabs {
-        background: rgba(248, 252, 255, 0.96);
+        background: rgba(10, 8, 24, 0.96);
       }
 
       .tabs button {
         min-height: 34px;
+      }
+
+      .panel {
+        border-color: rgba(180, 91, 255, 0.68);
       }
     }
 
