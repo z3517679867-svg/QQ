@@ -835,6 +835,66 @@
       }
     }
 
+  
+    /* 男女素材切换 */
+    .gender-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px 10px;
+      background: linear-gradient(180deg, rgba(239, 247, 255, 0.95), rgba(255,255,255,0.95));
+      border-bottom: 1px solid #c7dfff;
+    }
+
+    .gender-label {
+      color: #1d64bd;
+      font-size: 14px;
+      font-weight: 700;
+      margin-right: 2px;
+      white-space: nowrap;
+    }
+
+    .gender-switch button {
+      border: 1px solid #9fc7ff;
+      background: linear-gradient(180deg, #ffffff, #dcebff);
+      color: #1d64bd;
+      border-radius: 999px;
+      padding: 7px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 0 rgba(134, 184, 245, 0.25);
+    }
+
+    .gender-switch button:hover {
+      background: linear-gradient(180deg, #ffffff, #cfe4ff);
+    }
+
+    .gender-switch button.active {
+      background: linear-gradient(180deg, #4fa2ff, #1f72df);
+      color: #fff;
+      border-color: #1f72df;
+      box-shadow: 0 4px 12px rgba(31, 114, 223, 0.35);
+    }
+
+    @media (max-width: 760px) {
+      .gender-switch {
+        padding: 8px 8px;
+        gap: 7px;
+        overflow-x: auto;
+        flex-shrink: 0;
+      }
+
+      .gender-label {
+        font-size: 13px;
+      }
+
+      .gender-switch button {
+        padding: 7px 16px;
+        font-size: 14px;
+      }
+    }
+
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -894,6 +954,12 @@
       <div class="panel">
         <div id="itemsWarning"></div>
 
+        <div class="gender-switch" id="genderSwitch" aria-label="性别切换">
+          <span class="gender-label">素材性别</span>
+          <button type="button" data-gender="f">女</button>
+          <button type="button" data-gender="m">男</button>
+        </div>
+
         <div class="tabs" id="tabs"></div>
 
         <div class="category-head">
@@ -907,14 +973,15 @@
   </div>
 
   <!-- 这个文件由“生成素材清单.py”自动生成 -->
-  <script src="items.js"></script>
+  <script src="items.js?v=gender20260619"></script>
 
   <script>
     const ITEMS = window.ITEMS || {};
 
     /*
-      显示在页面上的分类。
-      hair_back 不显示为分类按钮，只用于自动匹配后发。
+      页面显示分类。
+      用户仍然只看到“衣服 / 上衣 / 下装 / 头发”，
+      但底层会根据当前性别读取 clothes_f / clothes_m 等真实素材分类。
     */
     const CATEGORY_ORDER = [
       "background",
@@ -939,7 +1006,7 @@
 
     /*
       实际图层顺序。
-      这里包含 hair_back。
+      这里仍然使用统一图层，不直接暴露 clothes_f / clothes_m。
     */
     const LAYER_ORDER = [
       "background",
@@ -962,6 +1029,17 @@
       "text",
       "frame"
     ];
+
+    /*
+      只有这四类对用户分男女。
+      hair_back 是头发后发的内部图层，也跟随男女，但不显示成分类按钮。
+    */
+    const GENDER_SPLIT_CATEGORIES = ["clothes", "bottom", "top", "hair"];
+    const GENDER_SPLIT_LAYERS = ["clothes", "bottom", "top", "hair", "hair_back"];
+    const GENDER_LABEL = {
+      f: "女",
+      m: "男"
+    };
 
     const CATEGORY_NAME = {
       background: "背景",
@@ -1028,11 +1106,6 @@
       "frame"
     ];
 
-    const state = {};
-    LAYER_ORDER.forEach(category => {
-      state[category] = "";
-    });
-
     const EMPTY_OPTIONS = {
       background: "空白背景",
       front: "无前景装饰",
@@ -1053,30 +1126,92 @@
       frame: "无相框"
     };
 
+    const state = {};
     let currentCategory = "background";
-
+    let currentGender = "f";
 
     /*
       防卡顿设置：
       1. 手机端每次先显示 30 个素材，网页端每次先显示 60 个素材。
-      2. 用户滑到素材列表底部附近时，自动加载下一批，不再显示“自动加载更多”按钮。
+      2. 用户滑到素材列表底部附近时，自动加载下一批。
       3. 当前搭配自动保存到 localStorage，刷新后自动恢复。
+      4. 男女分类各自保存衣服、上衣、下装、头发。
     */
-    const STORAGE_KEY = "qqshow_avatar_state_v4";
+    const STORAGE_KEY = "qqshow_avatar_state_v5_gender";
+    const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
     const visibleCounts = {};
     let autoLoadTimer = null;
+
+    function genderCategoryName(category, gender) {
+      return category + "_" + gender;
+    }
+
+    function genderCandidateExists(category, gender) {
+      const candidate = genderCategoryName(category, gender);
+      return Array.isArray(ITEMS[candidate]) && ITEMS[candidate].length > 0;
+    }
+
+    function getRealCategory(category) {
+      if (!GENDER_SPLIT_LAYERS.includes(category)) {
+        return category;
+      }
+
+      const candidate = genderCategoryName(category, currentGender);
+
+      /*
+        兼容旧结构：
+        如果 clothes_f / hair_f 等不存在或为空，而旧 clothes / hair 里有素材，
+        就继续读取旧分类，避免网站直接空掉。
+      */
+      if (Array.isArray(ITEMS[candidate]) && ITEMS[candidate].length > 0) {
+        return candidate;
+      }
+
+      if (Array.isArray(ITEMS[category]) && ITEMS[category].length > 0) {
+        return category;
+      }
+
+      return candidate;
+    }
+
+    function getStateKey(category) {
+      if (!GENDER_SPLIT_LAYERS.includes(category)) {
+        return category;
+      }
+      return getRealCategory(category);
+    }
+
+    function getState(category) {
+      return state[getStateKey(category)] || "";
+    }
+
+    function setState(category, src) {
+      state[getStateKey(category)] = src || "";
+    }
+
+    function getCategoryList(category) {
+      const realCategory = getRealCategory(category);
+      return ITEMS[realCategory] || [];
+    }
+
+    function getVisibleCount(category) {
+      const realCategory = getRealCategory(category);
+      return visibleCounts[realCategory] || getBatchSize();
+    }
+
+    function setVisibleCount(category, value) {
+      const realCategory = getRealCategory(category);
+      visibleCounts[realCategory] = value;
+    }
 
     function getBatchSize() {
       return window.innerWidth <= 760 ? 30 : 60;
     }
 
-    function getVisibleCount(category) {
-      return visibleCounts[category] || getBatchSize();
-    }
-
     function increaseVisibleCount(category) {
-      const list = ITEMS[category] || [];
-      visibleCounts[category] = Math.min(getVisibleCount(category) + getBatchSize(), list.length);
+      const list = getCategoryList(category);
+      const realCategory = getRealCategory(category);
+      visibleCounts[realCategory] = Math.min(getVisibleCount(category) + getBatchSize(), list.length);
     }
 
     function setupAutoLoadScroll() {
@@ -1090,7 +1225,7 @@
         autoLoadTimer = setTimeout(function () {
           autoLoadTimer = null;
 
-          const list = ITEMS[currentCategory] || [];
+          const list = getCategoryList(currentCategory);
           const currentVisible = getVisibleCount(currentCategory);
 
           if (currentVisible >= list.length) return;
@@ -1109,29 +1244,67 @@
     function init() {
       ensureCategories();
       checkItemsLoaded();
+      createGenderSwitch();
       createTabs();
       restoreSavedAvatar();
+      ensureGenderDefaults(currentGender);
+      applyAllLayers();
       renderItems(currentCategory);
       setupAutoLoadScroll();
       updateClothesVisibility();
+      updateGenderStatus();
+    }
+
+    function addEmptyOption(realCategory, displayCategory) {
+      if (!ITEMS[realCategory]) {
+        ITEMS[realCategory] = [];
+      }
+
+      if (!EMPTY_OPTIONS[displayCategory]) {
+        return;
+      }
+
+      const hasEmpty = ITEMS[realCategory].some(item => item.src === "");
+      if (!hasEmpty) {
+        ITEMS[realCategory].unshift({
+          name: EMPTY_OPTIONS[displayCategory],
+          src: ""
+        });
+      }
     }
 
     function ensureCategories() {
+      /*
+        确保旧分类存在。
+      */
       LAYER_ORDER.forEach(category => {
         if (!ITEMS[category]) {
           ITEMS[category] = [];
         }
       });
 
-      CATEGORY_ORDER.forEach(category => {
-        if (EMPTY_OPTIONS[category]) {
-          const hasEmpty = ITEMS[category].some(item => item.src === "");
-          if (!hasEmpty) {
-            ITEMS[category].unshift({
-              name: EMPTY_OPTIONS[category],
-              src: ""
-            });
+      /*
+        确保男女分类存在。
+      */
+      ["f", "m"].forEach(gender => {
+        GENDER_SPLIT_LAYERS.forEach(category => {
+          const realCategory = genderCategoryName(category, gender);
+          if (!ITEMS[realCategory]) {
+            ITEMS[realCategory] = [];
           }
+        });
+      });
+
+      /*
+        给可显示分类加“不使用”选项。
+      */
+      CATEGORY_ORDER.forEach(category => {
+        addEmptyOption(category, category);
+
+        if (GENDER_SPLIT_CATEGORIES.includes(category)) {
+          ["f", "m"].forEach(gender => {
+            addEmptyOption(genderCategoryName(category, gender), category);
+          });
         }
       });
     }
@@ -1143,13 +1316,53 @@
         warningBox.innerHTML = `
           <div class="warning">
             没有检测到 <b>items.js</b>。<br>
-            请先运行 <b>生成素材清单.py</b>，生成 items.js 后再刷新网页。
+            请先运行 <b>生成素材清单_四字诗意命名版_男女分类.py</b>，生成 items.js 后再刷新网页。
           </div>
         `;
         return;
       }
 
       warningBox.innerHTML = "";
+    }
+
+    function createGenderSwitch() {
+      document.querySelectorAll("#genderSwitch button").forEach(btn => {
+        btn.onclick = function () {
+          const gender = btn.getAttribute("data-gender");
+
+          if (!gender || gender === currentGender) return;
+
+          switchGender(gender);
+        };
+      });
+
+      updateGenderStatus();
+    }
+
+    function updateGenderStatus() {
+      document.querySelectorAll("#genderSwitch button").forEach(btn => {
+        btn.classList.remove("active");
+
+        if (btn.getAttribute("data-gender") === currentGender) {
+          btn.classList.add("active");
+        }
+      });
+    }
+
+    function switchGender(gender) {
+      currentGender = gender;
+
+      ensureGenderDefaults(gender);
+      applyAllLayers();
+      updateClothesVisibility();
+      renderItems(currentCategory, { resetScrollTop: true });
+      updateGenderStatus();
+      updateTabStatus();
+      saveAvatarState();
+
+      trackGAEvent("gender_switch", {
+        gender: gender
+      });
     }
 
     function createTabs() {
@@ -1163,7 +1376,8 @@
 
         btn.onclick = function () {
           trackGAEvent("category_click", {
-            item_category: category
+            item_category: category,
+            gender: currentGender
           });
 
           currentCategory = category;
@@ -1187,31 +1401,58 @@
       });
     }
 
+    function ensureGenderDefaults(gender) {
+      /*
+        只给当前性别的四个分男女分类设置默认值。
+        其它共用分类不受男女切换影响。
+      */
+      const oldGender = currentGender;
+      currentGender = gender;
+
+      GENDER_SPLIT_CATEGORIES.forEach(category => {
+        const key = getStateKey(category);
+        if (typeof state[key] === "string") {
+          return;
+        }
+
+        const list = getCategoryList(category);
+        state[key] = list.length > 0 ? list[0].src : "";
+      });
+
+      const hairBackKey = getStateKey("hair_back");
+      if (typeof state[hairBackKey] !== "string") {
+        state[hairBackKey] = "";
+      }
+
+      autoChooseHairBack(getState("hair"), true);
+
+      currentGender = oldGender;
+    }
+
     function setDefaultAvatar() {
       CATEGORY_ORDER.forEach(category => {
-        const list = ITEMS[category] || [];
+        const list = getCategoryList(category);
 
         if (list.length > 0) {
           chooseItem(category, list[0].src, true);
         } else {
-          clearLayer(category);
+          setState(category, "");
+          applyLayer(category);
         }
       });
 
-      autoChooseHairBack(state.hair);
+      autoChooseHairBack(getState("hair"), true);
     }
-
 
     function saveAvatarState() {
       try {
-        const data = {};
-
-        LAYER_ORDER.forEach(category => {
-          data[category] = state[category] || "";
-        });
-
-        data.currentCategory = currentCategory;
-        data.savedAt = Date.now();
+        const data = {
+          state: state,
+          currentCategory: currentCategory,
+          currentGender: currentGender,
+          savedAt: Date.now(),
+          version: "gender_v5"
+        };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (error) {
@@ -1223,7 +1464,7 @@
       let saved = null;
 
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
         if (raw) {
           saved = JSON.parse(raw);
         }
@@ -1237,22 +1478,37 @@
         return;
       }
 
-      LAYER_ORDER.forEach(category => {
-        state[category] = typeof saved[category] === "string" ? saved[category] : "";
-        applyLayer(category);
-      });
+      if (saved.state && typeof saved.state === "object") {
+        Object.keys(saved.state).forEach(key => {
+          state[key] = typeof saved.state[key] === "string" ? saved.state[key] : "";
+        });
+      } else {
+        /*
+          兼容旧版本保存结构。
+        */
+        LAYER_ORDER.forEach(category => {
+          state[category] = typeof saved[category] === "string" ? saved[category] : "";
+        });
+      }
 
       if (saved.currentCategory && CATEGORY_ORDER.includes(saved.currentCategory)) {
         currentCategory = saved.currentCategory;
       }
 
-      autoChooseHairBack(state.hair);
+      if (saved.currentGender === "f" || saved.currentGender === "m") {
+        currentGender = saved.currentGender;
+      }
+
+      ensureGenderDefaults(currentGender);
+      autoChooseHairBack(getState("hair"), true);
+      applyAllLayers();
       updateClothesVisibility();
     }
 
     function clearSavedAvatarState() {
       try {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(OLD_STORAGE_KEY);
       } catch (error) {
         console.log("清除保存搭配失败：", error);
       }
@@ -1268,16 +1524,26 @@
 
       box.innerHTML = "";
 
-      const list = ITEMS[category] || [];
+      const realCategory = getRealCategory(category);
+      const list = getCategoryList(category);
+      const selectedSrc = getState(category);
 
-      title.innerText = CATEGORY_NAME[category];
+      if (GENDER_SPLIT_CATEGORIES.includes(category)) {
+        title.innerText = CATEGORY_NAME[category] + "（" + GENDER_LABEL[currentGender] + "）";
+      } else {
+        title.innerText = CATEGORY_NAME[category];
+      }
 
       if (list.length === 0) {
         count.innerText = "0 个素材";
         box.innerHTML = `
           <div class="warning">
             当前分类没有素材。<br>
-            请把图片放入 <b>assets/${category}</b> 文件夹，然后运行 <b>生成素材清单.py</b>。
+            ${
+              GENDER_SPLIT_CATEGORIES.includes(category)
+                ? "请把图片放入 <b>assets/" + realCategory + "</b> 文件夹，然后运行 <b>生成素材清单_四字诗意命名版_男女分类.py</b>。"
+                : "请把图片放入 <b>assets/" + category + "</b> 文件夹，然后运行 <b>生成素材清单_四字诗意命名版_男女分类.py</b>。"
+            }
           </div>
         `;
         return;
@@ -1287,14 +1553,13 @@
 
       /*
         如果当前已选素材在后面批次中，自动展开到它所在的位置。
-        这样刷新恢复搭配后，打开该分类能看到已选素材。
       */
-      const selectedIndex = list.findIndex(item => state[category] === item.src);
+      const selectedIndex = list.findIndex(item => selectedSrc === item.src);
       if (selectedIndex >= visibleCount) {
         visibleCount = Math.min(list.length, selectedIndex + 1);
       }
 
-      visibleCounts[category] = visibleCount;
+      setVisibleCount(category, visibleCount);
 
       const visibleList = list.slice(0, visibleCount);
       count.innerText = visibleList.length + "/" + list.length + " 个素材";
@@ -1303,7 +1568,7 @@
         const div = document.createElement("div");
         div.className = "item";
 
-        if (state[category] === item.src) {
+        if (selectedSrc === item.src) {
           div.classList.add("selected");
         }
 
@@ -1351,7 +1616,7 @@
       if (visibleCount < list.length) {
         const note = document.createElement("div");
         note.className = "auto-load-note";
-        note.innerText = "继续向下滑动，自动自动加载更多素材（" + visibleCount + "/" + list.length + "）";
+        note.innerText = "继续向下滑动，自动加载更多素材（" + visibleCount + "/" + list.length + "）";
         box.appendChild(note);
       }
 
@@ -1362,26 +1627,25 @@
       }
     }
 
-
     function chooseItem(category, src, isInit = false) {
       /*
-        如果选中了“整套衣服”，自动清空上衣和下装。
+        如果选中了“整套衣服”，自动清空当前性别的上衣和下装。
       */
       if (category === "clothes" && src) {
-        state.top = "";
-        state.bottom = "";
+        setState("top", "");
+        setState("bottom", "");
         applyLayer("top");
         applyLayer("bottom");
       }
 
-      state[category] = src;
+      setState(category, src);
       applyLayer(category);
 
       /*
-        如果选中头发，自动匹配同一个 assets/hair 文件夹里的后发。
+        如果选中头发，自动匹配当前性别里的后发。
       */
       if (category === "hair") {
-        autoChooseHairBack(src);
+        autoChooseHairBack(src, isInit);
       }
 
       updateClothesVisibility();
@@ -1391,6 +1655,8 @@
 
         trackGAEvent("choose_item", {
           item_category: category,
+          real_category: getRealCategory(category),
+          gender: currentGender,
           has_item: src ? "yes" : "no"
         });
 
@@ -1400,7 +1666,7 @@
 
     function applyLayer(category) {
       const img = document.getElementById(LAYER_ID[category]);
-      const src = state[category];
+      const src = getState(category);
 
       if (!img) return;
 
@@ -1413,8 +1679,14 @@
       }
     }
 
+    function applyAllLayers() {
+      LAYER_ORDER.forEach(category => {
+        applyLayer(category);
+      });
+    }
+
     function clearLayer(category) {
-      state[category] = "";
+      setState(category, "");
       applyLayer(category);
     }
 
@@ -1432,12 +1704,16 @@
         .replace(/^back_/, "");
     }
 
+    function getHairBackList() {
+      const realHairBack = getRealCategory("hair_back");
+      return ITEMS[realHairBack] || ITEMS.hair_back || [];
+    }
 
     function getMatchedHairBackSrc(frontSrc) {
       if (!frontSrc) return "";
 
       const frontKey = getHairMatchKey(frontSrc);
-      const backList = ITEMS.hair_back || [];
+      const backList = getHairBackList();
 
       const matchedBack = backList.find(item => {
         if (!item.src) return false;
@@ -1447,58 +1723,54 @@
       return matchedBack ? matchedBack.src : "";
     }
 
-    function autoChooseHairBack(frontSrc) {
+    function autoChooseHairBack(frontSrc, isInit = false) {
       /*
         取消头发时，后发也清空。
       */
       if (!frontSrc) {
-        state.hair_back = "";
+        setState("hair_back", "");
         applyLayer("hair_back");
         return;
       }
 
-      const frontKey = getHairMatchKey(frontSrc);
-      const backList = ITEMS.hair_back || [];
-
-      const matchedBack = backList.find(item => {
-        if (!item.src) return false;
-        return getHairMatchKey(item.src) === frontKey;
-      });
-
-      if (matchedBack) {
-        state.hair_back = matchedBack.src;
-      } else {
-        state.hair_back = "";
-      }
-
+      const backSrc = getMatchedHairBackSrc(frontSrc);
+      setState("hair_back", backSrc || "");
       applyLayer("hair_back");
+
+      if (!isInit) {
+        saveAvatarState();
+      }
     }
 
     function updateClothesVisibility() {
       const clothesImg = document.getElementById("layer-clothes");
-      const hasTop = !!state.top;
-      const hasBottom = !!state.bottom;
+      const hasTop = !!getState("top");
+      const hasBottom = !!getState("bottom");
 
       if (!clothesImg) return;
 
       if (hasTop || hasBottom) {
         clothesImg.style.display = "none";
       } else {
-        clothesImg.style.display = state.clothes ? "block" : "none";
+        clothesImg.style.display = getState("clothes") ? "block" : "none";
       }
     }
 
     function resetAvatar() {
-      trackGAEvent("reset_avatar");
+      trackGAEvent("reset_avatar", {
+        gender: currentGender
+      });
 
       setDefaultAvatar();
       saveAvatarState();
-      renderItems(currentCategory);
+      renderItems(currentCategory, { resetScrollTop: true });
       updateClothesVisibility();
     }
 
     function saveAvatar() {
-      trackGAEvent("save_avatar");
+      trackGAEvent("save_avatar", {
+        gender: currentGender
+      });
 
       const canvas = document.createElement("canvas");
       canvas.width = 140;
@@ -1523,12 +1795,12 @@
         /*
           上衣或下装出现时，保存图片也不绘制整套衣服。
         */
-        if (category === "clothes" && (state.top || state.bottom)) {
+        if (category === "clothes" && (getState("top") || getState("bottom"))) {
           drawNext();
           return;
         }
 
-        const src = state[category];
+        const src = getState(category);
 
         if (!src) {
           drawNext();
@@ -1552,7 +1824,6 @@
 
       drawNext();
     }
-
 
     function trackGAEvent(eventName, params = {}) {
       if (typeof gtag === "function") {
