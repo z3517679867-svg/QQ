@@ -293,6 +293,38 @@
       margin-bottom: 14px;
     }
 
+
+
+    .load-more-wrap {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: center;
+      padding: 10px 0 4px;
+    }
+
+    .load-more-btn {
+      border: none;
+      background: #8b5e3c;
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 4px 10px rgba(90, 60, 40, 0.12);
+    }
+
+    .load-more-btn:hover {
+      background: #6e4528;
+    }
+
+    .load-more-note {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #9a7a64;
+      font-size: 12px;
+      padding: 2px 0 8px;
+    }
+
     @media (max-width: 760px) {
       html,
       body {
@@ -460,13 +492,13 @@
        使用前必须把下面两个 G-XXXXXXXXXX 改成你自己的 GA4 Measurement ID
        示例：G-ABC1234567
   -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EV19MGWG07"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag("js", new Date());
 
-    gtag("config", "G-EV19MGWG07");
+    gtag("config", "G-XXXXXXXXXX");
   </script>
 
 </head>
@@ -673,11 +705,33 @@
 
     let currentCategory = "background";
 
+
+    /*
+      防卡顿设置：
+      1. 手机端每次只显示 30 个素材，网页端每次显示 60 个素材。
+      2. 用户点击“加载更多”后再继续显示下一批。
+      3. 当前搭配自动保存到 localStorage，刷新后自动恢复。
+    */
+    const STORAGE_KEY = "qqshow_avatar_state_v4";
+    const visibleCounts = {};
+
+    function getBatchSize() {
+      return window.innerWidth <= 760 ? 30 : 60;
+    }
+
+    function getVisibleCount(category) {
+      return visibleCounts[category] || getBatchSize();
+    }
+
+    function increaseVisibleCount(category) {
+      visibleCounts[category] = getVisibleCount(category) + getBatchSize();
+    }
+
     function init() {
       ensureCategories();
       checkItemsLoaded();
       createTabs();
-      setDefaultAvatar();
+      restoreSavedAvatar();
       renderItems(currentCategory);
       updateClothesVisibility();
     }
@@ -767,6 +821,63 @@
       autoChooseHairBack(state.hair);
     }
 
+
+    function saveAvatarState() {
+      try {
+        const data = {};
+
+        LAYER_ORDER.forEach(category => {
+          data[category] = state[category] || "";
+        });
+
+        data.currentCategory = currentCategory;
+        data.savedAt = Date.now();
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.log("自动保存搭配失败：", error);
+      }
+    }
+
+    function restoreSavedAvatar() {
+      let saved = null;
+
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          saved = JSON.parse(raw);
+        }
+      } catch (error) {
+        console.log("读取上次搭配失败：", error);
+        saved = null;
+      }
+
+      if (!saved) {
+        setDefaultAvatar();
+        return;
+      }
+
+      LAYER_ORDER.forEach(category => {
+        state[category] = typeof saved[category] === "string" ? saved[category] : "";
+        applyLayer(category);
+      });
+
+      if (saved.currentCategory && CATEGORY_ORDER.includes(saved.currentCategory)) {
+        currentCategory = saved.currentCategory;
+      }
+
+      autoChooseHairBack(state.hair);
+      updateClothesVisibility();
+    }
+
+    function clearSavedAvatarState() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.log("清除保存搭配失败：", error);
+      }
+    }
+
     function renderItems(category) {
       const box = document.getElementById("items");
       const title = document.getElementById("categoryTitle");
@@ -777,9 +888,9 @@
       const list = ITEMS[category] || [];
 
       title.innerText = CATEGORY_NAME[category];
-      count.innerText = list.length + " 个素材";
 
       if (list.length === 0) {
+        count.innerText = "0 个素材";
         box.innerHTML = `
           <div class="warning">
             当前分类没有素材。<br>
@@ -789,7 +900,23 @@
         return;
       }
 
-      list.forEach(item => {
+      let visibleCount = Math.min(getVisibleCount(category), list.length);
+
+      /*
+        如果当前已选素材在后面批次中，自动展开到它所在的位置。
+        这样刷新恢复搭配后，打开该分类能看到已选素材。
+      */
+      const selectedIndex = list.findIndex(item => state[category] === item.src);
+      if (selectedIndex >= visibleCount) {
+        visibleCount = Math.min(list.length, selectedIndex + 1);
+      }
+
+      visibleCounts[category] = visibleCount;
+
+      const visibleList = list.slice(0, visibleCount);
+      count.innerText = visibleList.length + "/" + list.length + " 个素材";
+
+      visibleList.forEach(item => {
         const div = document.createElement("div");
         div.className = "item";
 
@@ -804,22 +931,22 @@
             if (backSrc) {
               div.innerHTML = `
                 <div class="hair-thumb">
-                  <img class="hair-back-thumb" src="${backSrc}" alt="" loading="lazy">
-                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy">
+                  <img class="hair-back-thumb" src="${backSrc}" alt="" loading="lazy" decoding="async">
+                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
                 </div>
                 <div class="item-name">${item.name}</div>
               `;
             } else {
               div.innerHTML = `
                 <div class="hair-thumb">
-                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy">
+                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
                 </div>
                 <div class="item-name">${item.name}</div>
               `;
             }
           } else {
             div.innerHTML = `
-              <img src="${item.src}" alt="${item.name}" loading="lazy">
+              <img src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
               <div class="item-name">${item.name}</div>
             `;
           }
@@ -837,6 +964,29 @@
 
         box.appendChild(div);
       });
+
+      if (visibleCount < list.length) {
+        const note = document.createElement("div");
+        note.className = "load-more-note";
+        note.innerText = "为防止手机卡顿，当前只加载部分素材";
+        box.appendChild(note);
+
+        const wrap = document.createElement("div");
+        wrap.className = "load-more-wrap";
+
+        const btn = document.createElement("button");
+        btn.className = "load-more-btn";
+        btn.type = "button";
+        btn.innerText = "加载更多（" + visibleCount + "/" + list.length + "）";
+
+        btn.onclick = function () {
+          increaseVisibleCount(category);
+          renderItems(category);
+        };
+
+        wrap.appendChild(btn);
+        box.appendChild(wrap);
+      }
     }
 
     function chooseItem(category, src, isInit = false) {
@@ -863,6 +1013,8 @@
       updateClothesVisibility();
 
       if (!isInit) {
+        saveAvatarState();
+
         trackGAEvent("choose_item", {
           item_category: category,
           has_item: src ? "yes" : "no"
@@ -966,6 +1118,7 @@
       trackGAEvent("reset_avatar");
 
       setDefaultAvatar();
+      saveAvatarState();
       renderItems(currentCategory);
       updateClothesVisibility();
     }
@@ -1032,6 +1185,8 @@
         gtag("event", eventName, params);
       }
     }
+
+    window.addEventListener("beforeunload", saveAvatarState);
 
     init();
   </script>
