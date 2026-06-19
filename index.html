@@ -1550,38 +1550,6 @@ h1 {
       }
     }
 
-    /* =========================
-       2026-06-19 电脑端形象放大版
-       只放大电脑端左侧预览人物，不改手机端和功能逻辑
-       ========================= */
-
-    @media (min-width: 761px) {
-      .preview-box {
-        width: 350px !important;
-      }
-
-      .avatar-outer {
-        min-height: 350px !important;
-        padding: 20px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-
-      .avatar {
-        width: 190px !important;
-        height: 307px !important;
-        transform: none !important;
-        transform-origin: center center !important;
-        overflow: visible !important;
-      }
-
-      .layer {
-        width: 190px !important;
-        height: 307px !important;
-      }
-    }
-
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -1994,6 +1962,19 @@ h1 {
         || fileName.includes("default");
     }
 
+    function isDefault2Item(item) {
+      if (!item || !item.src) return false;
+
+      const fileName = item.src.split("/").pop().toLowerCase();
+
+      return fileName === "default_2.gif"
+        || fileName === "default_2.png"
+        || fileName === "default_2.jpg"
+        || fileName === "default_2.jpeg"
+        || fileName === "default_2.webp"
+        || fileName.includes("default_2");
+    }
+
     function getDefaultSrcForCategory(category) {
       const list = getCategoryList(category);
 
@@ -2020,6 +2001,41 @@ h1 {
       */
       const firstRealItem = list.find(item => item && item.src);
       return firstRealItem ? firstRealItem.src : "";
+    }
+
+    function getGenderDefaultSrcForCategory(category, gender) {
+      const list = getCategoryList(category);
+
+      /*
+        男士默认身体/脸优先使用 default_2。
+        找不到 default_2 时，仍回退到原来的 default 规则，避免空白。
+      */
+      if (category === "body" && gender === "m") {
+        const maleDefaultItem = list.find(item => item && item.src && isDefault2Item(item));
+        if (maleDefaultItem) {
+          return maleDefaultItem.src;
+        }
+      }
+
+      return getDefaultSrcForCategory(category);
+    }
+
+    function isDefaultBodySrc(src) {
+      if (!src) return true;
+
+      const fileName = src.split("/").pop().toLowerCase();
+      return fileName.includes("default");
+    }
+
+    function ensureGenderBodyDefault(gender, force = false) {
+      const defaultSrc = getGenderDefaultSrcForCategory("body", gender);
+
+      if (!defaultSrc) return;
+
+      if (force || !state.body || isDefaultBodySrc(state.body)) {
+        state.body = defaultSrc;
+        applyLayer("body");
+      }
     }
 
     function getVisibleCount(category) {
@@ -2299,6 +2315,7 @@ h1 {
       currentGender = gender;
 
       ensureGenderDefaults(gender);
+      ensureGenderBodyDefault(gender, false);
       applyAllLayers();
       updateClothesVisibility();
       renderItems(currentCategory, { resetScrollTop: true });
@@ -2370,6 +2387,7 @@ h1 {
       }
 
       autoChooseHairBack(getState("hair"), true);
+      ensureGenderBodyDefault(gender, false);
 
       currentGender = oldGender;
     }
@@ -2382,7 +2400,7 @@ h1 {
         必需层没有 default：退回第一个真实素材。
       */
       CATEGORY_ORDER.forEach(category => {
-        const defaultSrc = getDefaultSrcForCategory(category);
+        const defaultSrc = getGenderDefaultSrcForCategory(category, currentGender);
         chooseItem(category, defaultSrc, true);
       });
 
