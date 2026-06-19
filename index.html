@@ -1550,7 +1550,78 @@ h1 {
       }
     }
 
-  </style>
+  
+
+    /* =========================
+       2026-06-20 手机稳定分页自动加载版覆盖样式
+       降低移动端阴影、模糊和 hover 渲染压力
+       ========================= */
+    @media (max-width: 760px) {
+      .page,
+      .preview-box,
+      .panel,
+      .item,
+      .btn-row,
+      .tabs,
+      .gender-switch,
+      .notice-panel {
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+      }
+
+      .avatar {
+        filter: none !important;
+      }
+
+      .item,
+      .tabs button,
+      .gender-switch button,
+      .save-btn,
+      .reset-btn,
+      .notice-btn,
+      .undo-btn,
+      .redo-btn,
+      .random-btn,
+      .load-more-btn {
+        transition: none !important;
+      }
+
+      .item:hover {
+        transform: none !important;
+        box-shadow: none !important;
+      }
+
+      .preview-box,
+      .panel {
+        background: rgba(255, 255, 255, 0.96) !important;
+      }
+
+      .items {
+        overscroll-behavior: contain;
+        contain: content;
+      }
+
+      .load-more-wrap {
+        padding: 8px 0 10px !important;
+      }
+
+      .load-more-btn {
+        padding: 7px 18px !important;
+        font-size: 12px !important;
+        min-height: 30px !important;
+      }
+
+      .auto-load-note {
+        grid-column: 1 / -1;
+        text-align: center;
+        font-size: 11px !important;
+        line-height: 1.45 !important;
+        color: #5b91a9;
+        padding: 2px 8px 8px;
+      }
+    }
+
+</style>
 
   <!-- Google Analytics 4 统计代码
        使用前必须把下面两个 G-EV19MGWG07 改成你自己的 GA4 Measurement ID
@@ -1799,19 +1870,102 @@ h1 {
 
     /*
       防卡顿设置：
-      1. 手机端每次先显示 30 个素材，网页端每次先显示 60 个素材。
-      2. 用户滑到素材列表底部附近时，自动加载下一批。
-      3. 当前搭配自动保存到 localStorage，刷新后自动恢复。
-      4. 男女分类各自保存衣服、上衣、下装、头发。
+      1. 手机端每批只显示 12 个素材，网页端仍然显示 60 个素材。
+      2. 手机端取消自动加载，改为点击“加载更多”。
+      3. 手机端默认最多先显示 48 个；超过 48 个仍可手动继续加载，避免功能缺失。
+      4. 手机端 GIF 缩略图会被冻结为静态预览，实际穿戴图层仍然使用原始素材。
+      5. 当前搭配自动保存到 localStorage，刷新后自动恢复。
+      6. 男女分类各自保存衣服、上衣、下装、头发。
     */
     const STORAGE_KEY = "qqshow_avatar_state_v7_default_face3_undo";
     const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
     const HISTORY_LIMIT = 50;
     const visibleCounts = {};
+    const mobilePageStarts = {};
     const undoStack = [];
     const redoStack = [];
     let autoLoadTimer = null;
     let isRestoringHistory = false;
+
+    const MOBILE_BREAKPOINT = 760;
+    const MOBILE_BATCH_SIZE = 12;
+    const DESKTOP_BATCH_SIZE = 60;
+    const MOBILE_SAFE_VISIBLE_LIMIT = 48;
+    const TRANSPARENT_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
+    function isMobileView() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function isGifSrc(src) {
+      return /\.gif(?:[?#].*)?$/i.test(src || "");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function getThumbImageHTML(src, alt = "", className = "") {
+      const safeSrc = escapeHtml(src);
+      const safeAlt = escapeHtml(alt);
+      const safeClass = escapeHtml(className);
+      const classAttr = safeClass ? ' class="' + safeClass + '"' : "";
+
+      if (isMobileView() && isGifSrc(src)) {
+        return '<img' + classAttr + ' src="' + TRANSPARENT_PIXEL + '" data-static-src="' + safeSrc + '" alt="' + safeAlt + '" loading="lazy" decoding="async">';
+      }
+
+      return '<img' + classAttr + ' src="' + safeSrc + '" alt="' + safeAlt + '" loading="lazy" decoding="async">';
+    }
+
+    function freezeGifThumbnail(img) {
+      if (!img || img.dataset.frozen === "1") return;
+
+      const src = img.getAttribute("data-static-src");
+      if (!src) return;
+
+      img.dataset.frozen = "1";
+
+      const sourceImage = new Image();
+
+      sourceImage.onload = function () {
+        try {
+          const rect = img.getBoundingClientRect();
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(rect.width || img.width || 84));
+          canvas.height = Math.max(1, Math.round(rect.height || img.height || 136));
+
+          const ctx = canvas.getContext("2d");
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+
+          img.src = canvas.toDataURL("image/png");
+          img.removeAttribute("data-static-src");
+        } catch (error) {
+          img.src = src;
+          img.removeAttribute("data-static-src");
+        }
+      };
+
+      sourceImage.onerror = function () {
+        img.src = src;
+        img.removeAttribute("data-static-src");
+      };
+
+      sourceImage.src = src;
+    }
+
+    function freezeVisibleThumbnailsOnMobile(container) {
+      if (!isMobileView() || !container) return;
+
+      container.querySelectorAll("img[data-static-src]").forEach(img => {
+        freezeGifThumbnail(img);
+      });
+    }
 
     function genderCategoryName(category, gender) {
       return category + "_" + gender;
@@ -1962,19 +2116,6 @@ h1 {
         || fileName.includes("default");
     }
 
-    function isDefault2Item(item) {
-      if (!item || !item.src) return false;
-
-      const fileName = item.src.split("/").pop().toLowerCase();
-
-      return fileName === "default_2.gif"
-        || fileName === "default_2.png"
-        || fileName === "default_2.jpg"
-        || fileName === "default_2.jpeg"
-        || fileName === "default_2.webp"
-        || fileName.includes("default_2");
-    }
-
     function getDefaultSrcForCategory(category) {
       const list = getCategoryList(category);
 
@@ -2003,41 +2144,6 @@ h1 {
       return firstRealItem ? firstRealItem.src : "";
     }
 
-    function getGenderDefaultSrcForCategory(category, gender) {
-      const list = getCategoryList(category);
-
-      /*
-        男士默认身体/脸优先使用 default_2。
-        找不到 default_2 时，仍回退到原来的 default 规则，避免空白。
-      */
-      if (category === "body" && gender === "m") {
-        const maleDefaultItem = list.find(item => item && item.src && isDefault2Item(item));
-        if (maleDefaultItem) {
-          return maleDefaultItem.src;
-        }
-      }
-
-      return getDefaultSrcForCategory(category);
-    }
-
-    function isDefaultBodySrc(src) {
-      if (!src) return true;
-
-      const fileName = src.split("/").pop().toLowerCase();
-      return fileName.includes("default");
-    }
-
-    function ensureGenderBodyDefault(gender, force = false) {
-      const defaultSrc = getGenderDefaultSrcForCategory("body", gender);
-
-      if (!defaultSrc) return;
-
-      if (force || !state.body || isDefaultBodySrc(state.body)) {
-        state.body = defaultSrc;
-        applyLayer("body");
-      }
-    }
-
     function getVisibleCount(category) {
       const realCategory = getRealCategory(category);
       return visibleCounts[realCategory] || getBatchSize();
@@ -2045,17 +2151,41 @@ h1 {
 
     function setVisibleCount(category, value) {
       const realCategory = getRealCategory(category);
-      visibleCounts[realCategory] = value;
+      visibleCounts[realCategory] = Math.max(0, value || 0);
+    }
+
+    function getMobilePageStart(category) {
+      const realCategory = getRealCategory(category);
+      return mobilePageStarts[realCategory] || 0;
+    }
+
+    function setMobilePageStart(category, value) {
+      const realCategory = getRealCategory(category);
+      mobilePageStarts[realCategory] = Math.max(0, value || 0);
     }
 
     function getBatchSize() {
-      return window.innerWidth <= 760 ? 30 : 60;
+      return isMobileView() ? MOBILE_BATCH_SIZE : DESKTOP_BATCH_SIZE;
     }
 
-    function increaseVisibleCount(category) {
+    function getCurrentMobilePageLimit(category) {
+      const list = getCategoryList(category);
+      const pageStart = getMobilePageStart(category);
+      return Math.min(list.length, pageStart + MOBILE_SAFE_VISIBLE_LIMIT);
+    }
+
+    function increaseVisibleCount(category, allowBeyondMobileSafeLimit = false) {
       const list = getCategoryList(category);
       const realCategory = getRealCategory(category);
-      visibleCounts[realCategory] = Math.min(getVisibleCount(category) + getBatchSize(), list.length);
+      const nextCount = getVisibleCount(category) + getBatchSize();
+      let limit = list.length;
+
+      if (isMobileView() && !allowBeyondMobileSafeLimit) {
+        const pageStart = getMobilePageStart(category);
+        limit = Math.max(0, getCurrentMobilePageLimit(category) - pageStart);
+      }
+
+      visibleCounts[realCategory] = Math.min(nextCount, limit);
     }
 
     function setupAutoLoadScroll() {
@@ -2071,14 +2201,16 @@ h1 {
 
           const list = getCategoryList(currentCategory);
           const currentVisible = getVisibleCount(currentCategory);
+          const pageStart = isMobileView() ? getMobilePageStart(currentCategory) : 0;
+          const pageLimit = isMobileView() ? getCurrentMobilePageLimit(currentCategory) : list.length;
 
-          if (currentVisible >= list.length) return;
+          if (pageStart + currentVisible >= pageLimit) return;
 
           const distanceToBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
 
           if (distanceToBottom < 360) {
             const previousScrollTop = box.scrollTop;
-            increaseVisibleCount(currentCategory);
+            increaseVisibleCount(currentCategory, !isMobileView());
             renderItems(currentCategory, { preserveScrollTop: previousScrollTop });
           }
         }, 120);
@@ -2315,7 +2447,6 @@ h1 {
       currentGender = gender;
 
       ensureGenderDefaults(gender);
-      ensureGenderBodyDefault(gender, false);
       applyAllLayers();
       updateClothesVisibility();
       renderItems(currentCategory, { resetScrollTop: true });
@@ -2387,7 +2518,6 @@ h1 {
       }
 
       autoChooseHairBack(getState("hair"), true);
-      ensureGenderBodyDefault(gender, false);
 
       currentGender = oldGender;
     }
@@ -2400,7 +2530,7 @@ h1 {
         必需层没有 default：退回第一个真实素材。
       */
       CATEGORY_ORDER.forEach(category => {
-        const defaultSrc = getGenderDefaultSrcForCategory(category, currentGender);
+        const defaultSrc = getDefaultSrcForCategory(category);
         chooseItem(category, defaultSrc, true);
       });
 
@@ -2521,22 +2651,57 @@ h1 {
         return;
       }
 
-      let visibleCount = Math.min(getVisibleCount(category), list.length);
+      let pageStart = isMobileView() ? getMobilePageStart(category) : 0;
+      if (pageStart >= list.length) {
+        pageStart = 0;
+        setMobilePageStart(category, 0);
+      }
+
+      let pageLimit = isMobileView() ? Math.min(list.length, pageStart + MOBILE_SAFE_VISIBLE_LIMIT) : list.length;
+      let visibleCount = Math.min(getVisibleCount(category), pageLimit - pageStart);
 
       /*
         如果当前已选素材在后面批次中，自动展开到它所在的位置。
+        手机端按 48 个素材一页显示，选中项如果不在当前页，会自动跳到所在页。
       */
       const selectedIndex = category === "face"
         ? list.findIndex(item => item.src && selectedFaceList.includes(item.src))
         : list.findIndex(item => selectedSrc === item.src);
-      if (selectedIndex >= visibleCount) {
-        visibleCount = Math.min(list.length, selectedIndex + 1);
+
+      if (selectedIndex >= 0) {
+        if (isMobileView()) {
+          const selectedPageStart = Math.floor(selectedIndex / MOBILE_SAFE_VISIBLE_LIMIT) * MOBILE_SAFE_VISIBLE_LIMIT;
+          if (selectedIndex < pageStart || selectedIndex >= pageLimit) {
+            pageStart = selectedPageStart;
+            setMobilePageStart(category, pageStart);
+            pageLimit = Math.min(list.length, pageStart + MOBILE_SAFE_VISIBLE_LIMIT);
+            visibleCount = Math.min(getBatchSize(), pageLimit - pageStart);
+          }
+
+          if (selectedIndex >= pageStart + visibleCount) {
+            visibleCount = Math.min(pageLimit - pageStart, selectedIndex - pageStart + 1);
+          }
+        } else if (selectedIndex >= visibleCount) {
+          visibleCount = Math.min(list.length, selectedIndex + 1);
+        }
       }
 
       setVisibleCount(category, visibleCount);
 
-      const visibleList = list.slice(0, visibleCount);
-      if (category === "face") {
+      const visibleList = isMobileView()
+        ? list.slice(pageStart, pageStart + visibleCount)
+        : list.slice(0, visibleCount);
+
+      if (isMobileView()) {
+        const totalPages = Math.max(1, Math.ceil(list.length / MOBILE_SAFE_VISIBLE_LIMIT));
+        const currentPage = Math.floor(pageStart / MOBILE_SAFE_VISIBLE_LIMIT) + 1;
+        const shownEnd = pageStart + visibleList.length;
+        if (category === "face") {
+          count.innerText = "第 " + currentPage + "/" + totalPages + " 页 · " + shownEnd + "/" + list.length + " 个素材，已选 " + selectedFaceList.length + "/" + FACE_SLOT_LIMIT;
+        } else {
+          count.innerText = "第 " + currentPage + "/" + totalPages + " 页 · " + shownEnd + "/" + list.length + " 个素材";
+        }
+      } else if (category === "face") {
         count.innerText = visibleList.length + "/" + list.length + " 个素材，已选 " + selectedFaceList.length + "/" + FACE_SLOT_LIMIT;
       } else {
         count.innerText = visibleList.length + "/" + list.length + " 个素材";
@@ -2561,22 +2726,22 @@ h1 {
             if (backSrc) {
               div.innerHTML = `
                 <div class="hair-thumb">
-                  <img class="hair-back-thumb" src="${backSrc}" alt="" loading="lazy" decoding="async">
-                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
+                  ${getThumbImageHTML(backSrc, "", "hair-back-thumb")}
+                  ${getThumbImageHTML(item.src, item.name, "hair-front-thumb")}
                 </div>
                 <div class="item-name">${item.name}</div>
               `;
             } else {
               div.innerHTML = `
                 <div class="hair-thumb">
-                  <img class="hair-front-thumb" src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
+                  ${getThumbImageHTML(item.src, item.name, "hair-front-thumb")}
                 </div>
                 <div class="item-name">${item.name}</div>
               `;
             }
           } else {
             div.innerHTML = `
-              <img src="${item.src}" alt="${item.name}" loading="lazy" decoding="async">
+              ${getThumbImageHTML(item.src, item.name)}
               <div class="item-name">${item.name}</div>
             `;
           }
@@ -2602,12 +2767,84 @@ h1 {
         box.appendChild(faceNote);
       }
 
-      if (visibleCount < list.length) {
-        const note = document.createElement("div");
-        note.className = "auto-load-note";
-        note.innerText = "继续向下滑动，自动加载更多素材（" + visibleCount + "/" + list.length + "）";
-        box.appendChild(note);
+      if (isMobileView()) {
+        const pageLimitNow = Math.min(list.length, pageStart + MOBILE_SAFE_VISIBLE_LIMIT);
+        const hasMoreInCurrentPage = pageStart + visibleCount < pageLimitNow;
+        const hasNextPage = pageLimitNow < list.length;
+        const hasPrevPage = pageStart > 0;
+
+        if (hasMoreInCurrentPage || hasNextPage || hasPrevPage) {
+          const wrap = document.createElement("div");
+          wrap.className = "load-more-wrap";
+
+          if (hasPrevPage) {
+            const prevBtn = document.createElement("button");
+            prevBtn.type = "button";
+            prevBtn.className = "load-more-btn";
+            prevBtn.innerText = "上一页";
+            prevBtn.onclick = function () {
+              setMobilePageStart(category, Math.max(0, pageStart - MOBILE_SAFE_VISIBLE_LIMIT));
+              setVisibleCount(category, MOBILE_SAFE_VISIBLE_LIMIT);
+              renderItems(category, { resetScrollTop: true });
+            };
+            wrap.appendChild(prevBtn);
+          }
+
+          if (hasMoreInCurrentPage) {
+            const moreBtn = document.createElement("button");
+            moreBtn.type = "button";
+            moreBtn.className = "load-more-btn";
+            moreBtn.innerText = "加载更多素材（" + visibleCount + "/" + (pageLimitNow - pageStart) + "）";
+            moreBtn.onclick = function () {
+              const previousScrollTop = box.scrollTop;
+              increaseVisibleCount(category, false);
+              renderItems(category, { preserveScrollTop: previousScrollTop });
+            };
+            wrap.appendChild(moreBtn);
+          }
+
+          if (!hasMoreInCurrentPage && hasNextPage) {
+            const nextBtn = document.createElement("button");
+            nextBtn.type = "button";
+            nextBtn.className = "load-more-btn";
+            nextBtn.innerText = "下一页";
+            nextBtn.onclick = function () {
+              setMobilePageStart(category, pageLimitNow);
+              setVisibleCount(category, getBatchSize());
+              renderItems(category, { resetScrollTop: true });
+            };
+            wrap.appendChild(nextBtn);
+          }
+
+          box.appendChild(wrap);
+
+          if (!hasMoreInCurrentPage && hasNextPage) {
+            const note = document.createElement("div");
+            note.className = "auto-load-note";
+            note.innerText = "当前页最多显示 48 个素材，进入下一页可以继续浏览，避免手机一次加载过多。";
+            box.appendChild(note);
+          }
+        }
+      } else if (visibleCount < list.length) {
+        const wrap = document.createElement("div");
+        wrap.className = "load-more-wrap";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "load-more-btn";
+        btn.innerText = "加载更多素材（" + visibleCount + "/" + list.length + "）";
+
+        btn.onclick = function () {
+          const previousScrollTop = box.scrollTop;
+          increaseVisibleCount(category, true);
+          renderItems(category, { preserveScrollTop: previousScrollTop });
+        };
+
+        wrap.appendChild(btn);
+        box.appendChild(wrap);
       }
+
+      freezeVisibleThumbnailsOnMobile(box);
 
       if (typeof preserveScrollTop === "number") {
         box.scrollTop = preserveScrollTop;

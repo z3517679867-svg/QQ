@@ -2763,6 +2763,18 @@ window.ITEMS = {
     {
       "name": "雪松衣裙",
       "src": "assets/clothes_f/cloth_394.gif"
+    },
+    {
+      "name": "舞会偶像",
+      "src": "assets/clothes_f/cloth_395.gif"
+    },
+    {
+      "name": "绸缎学院",
+      "src": "assets/clothes_f/cloth_396.gif"
+    },
+    {
+      "name": "花束熊装",
+      "src": "assets/clothes_f/cloth_397.gif"
     }
   ],
   "clothes_m": [
@@ -3125,6 +3137,22 @@ window.ITEMS = {
     {
       "name": "魔法套装",
       "src": "assets/clothes_m/cloth_399.gif"
+    },
+    {
+      "name": "夜航睡衣",
+      "src": "assets/clothes_m/cloth_400.gif"
+    },
+    {
+      "name": "闪片熊装",
+      "src": "assets/clothes_m/cloth_401.gif"
+    },
+    {
+      "name": "航线斗篷",
+      "src": "assets/clothes_m/cloth_402.gif"
+    },
+    {
+      "name": "水晶洋装",
+      "src": "assets/clothes_m/cloth_403.gif"
     }
   ],
   "bottom": [
@@ -3628,6 +3656,10 @@ window.ITEMS = {
     }
   ],
   "body": [
+    {
+      "name": "彩梦素身",
+      "src": "assets/body/default_2.gif"
+    },
     {
       "name": "默认素身",
       "src": "assets/body/default.gif"
@@ -5805,6 +5837,10 @@ window.ITEMS = {
     {
       "name": "流彩花冠",
       "src": "assets/hat/hat_111.gif"
+    },
+    {
+      "name": "万花织帽",
+      "src": "assets/hat/hat_112.gif"
     }
   ],
   "glasses": [
@@ -5895,6 +5931,10 @@ window.ITEMS = {
     {
       "name": "万花护镜",
       "src": "assets/glasses/23.gif"
+    },
+    {
+      "name": "幻糖墨镜",
+      "src": "assets/glasses/24.gif"
     },
     {
       "name": "电波心镜",
@@ -6831,6 +6871,18 @@ window.ITEMS = {
     {
       "name": "霓虹注释",
       "src": "assets/text/text_108.gif"
+    },
+    {
+      "name": "珠光招牌",
+      "src": "assets/text/text_109.gif"
+    },
+    {
+      "name": "万花问候",
+      "src": "assets/text/text_110.gif"
+    },
+    {
+      "name": "霓虹签名",
+      "src": "assets/text/text_111.gif"
     },
     {
       "name": "流彩标题",
