@@ -2732,17 +2732,14 @@ h1 {
 
       const emptyItems = list.filter(item => item && !item.src);
       const realItems = list.filter(item => item && item.src);
-      const explicitFrontItems = realItems.filter(item => isHairFrontSrc(item.src) && !isHairBackSrc(item.src));
-
       /*
-        如果素材命名里能识别 front，就只展示 front；
-        如果没有 front 标记，就展示所有“不是 back”的素材，兼容旧素材命名。
+        修复：不要因为分类中存在少量 *_front 前发，就把其它没有 front 标记的头发全部隐藏。
+        只隐藏明确命名为后发的素材；其余头发都显示出来。
+        有匹配后发时，缩略图仍然会按“后发 + 前发”叠加显示。
       */
-      const frontItems = explicitFrontItems.length > 0
-        ? explicitFrontItems
-        : realItems.filter(item => !isHairBackSrc(item.src));
+      const displayItems = realItems.filter(item => !isHairBackSrc(item.src));
 
-      return emptyItems.concat(frontItems);
+      return emptyItems.concat(displayItems);
     }
 
     function uniqueHairItems(list) {
