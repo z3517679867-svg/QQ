@@ -108,6 +108,8 @@
     #layer-glasses { z-index: 80; }
     #layer-earring { z-index: 90; }
     #layer-face { z-index: 100; }
+    #layer-face-2 { z-index: 101; }
+    #layer-face-3 { z-index: 102; }
     #layer-hand { z-index: 110; }
     #layer-effect { z-index: 120; }
     #layer-partner { z-index: 130; }
@@ -895,6 +897,41 @@
       }
     }
 
+  
+    .undo-btn,
+    .redo-btn {
+      border: none;
+      color: #ffffff;
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      background: linear-gradient(180deg, #9ecbff, #5f9be5);
+      box-shadow: 0 5px 14px rgba(68, 143, 232, 0.18);
+    }
+
+    .undo-btn:hover:not(:disabled),
+    .redo-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, #84bbff, #3f84d7);
+    }
+
+    .undo-btn:disabled,
+    .redo-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+      box-shadow: none;
+      filter: grayscale(0.2);
+    }
+
+    @media (max-width: 760px) {
+      .undo-btn,
+      .redo-btn {
+        padding: 7px 12px;
+        font-size: 12px;
+        border-radius: 7px;
+      }
+    }
+
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -936,6 +973,8 @@
             <img id="layer-glasses" class="layer" alt="">
             <img id="layer-earring" class="layer" alt="">
             <img id="layer-face" class="layer" alt="">
+            <img id="layer-face-2" class="layer" alt="">
+            <img id="layer-face-3" class="layer" alt="">
             <img id="layer-hand" class="layer" alt="">
             <img id="layer-effect" class="layer" alt="">
             <img id="layer-partner" class="layer" alt="">
@@ -945,6 +984,8 @@
         </div>
 
         <div class="btn-row">
+          <button class="undo-btn" id="undoBtn" onclick="undoStep()" disabled>返回上一步</button>
+          <button class="redo-btn" id="redoBtn" onclick="redoStep()" disabled>前进一步</button>
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
           <button class="notice-btn" onclick="openNotice()">声明</button>
@@ -973,7 +1014,7 @@
   </div>
 
   <!-- 这个文件由“生成素材清单.py”自动生成 -->
-  <script src="items.js?v=gender20260619"></script>
+  <script src="items.js?v=genderFace3UndoRedo_20260619"></script>
 
   <script>
     const ITEMS = window.ITEMS || {};
@@ -1040,6 +1081,13 @@
       f: "女",
       m: "男"
     };
+
+    /*
+      脸饰品可叠加，最多三层。
+      网页只显示一个“脸饰品”分类，但内部会绘制 layer-face / layer-face-2 / layer-face-3。
+    */
+    const FACE_SLOT_LIMIT = 3;
+    const FACE_LAYER_IDS = ["layer-face", "layer-face-2", "layer-face-3"];
 
     const CATEGORY_NAME = {
       background: "背景",
@@ -1139,8 +1187,12 @@
     */
     const STORAGE_KEY = "qqshow_avatar_state_v5_gender";
     const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
+    const HISTORY_LIMIT = 50;
     const visibleCounts = {};
+    const undoStack = [];
+    const redoStack = [];
     let autoLoadTimer = null;
+    let isRestoringHistory = false;
 
     function genderCategoryName(category, gender) {
       return category + "_" + gender;
@@ -1181,11 +1233,87 @@
       return getRealCategory(category);
     }
 
+    function getFaceList() {
+      const value = state.face;
+
+      if (Array.isArray(value)) {
+        return value.filter(Boolean).slice(0, FACE_SLOT_LIMIT);
+      }
+
+      if (typeof value === "string" && value) {
+        return [value];
+      }
+
+      return [];
+    }
+
+    function setFaceList(list) {
+      if (!Array.isArray(list)) {
+        state.face = [];
+        return;
+      }
+
+      state.face = list.filter(Boolean).slice(0, FACE_SLOT_LIMIT);
+    }
+
+    function isFaceSelected(src) {
+      if (!src) return getFaceList().length === 0;
+      return getFaceList().includes(src);
+    }
+
+    function toggleFaceItem(src) {
+      if (!src) {
+        setFaceList([]);
+        return;
+      }
+
+      const list = getFaceList();
+      const existingIndex = list.indexOf(src);
+
+      /*
+        已选脸饰再次点击 = 取消该脸饰。
+      */
+      if (existingIndex >= 0) {
+        list.splice(existingIndex, 1);
+        setFaceList(list);
+        return;
+      }
+
+      /*
+        未满 3 个时直接追加。
+        已满 3 个时，用新选择替换最早选择的那个，始终保持最多 3 个。
+      */
+      if (list.length < FACE_SLOT_LIMIT) {
+        list.push(src);
+      } else {
+        list.shift();
+        list.push(src);
+      }
+
+      setFaceList(list);
+    }
+
     function getState(category) {
+      if (category === "face") {
+        return getFaceList();
+      }
+
       return state[getStateKey(category)] || "";
     }
 
     function setState(category, src) {
+      if (category === "face") {
+        if (Array.isArray(src)) {
+          setFaceList(src);
+        } else if (typeof src === "string" && src) {
+          setFaceList([src]);
+        } else {
+          setFaceList([]);
+        }
+
+        return;
+      }
+
       state[getStateKey(category)] = src || "";
     }
 
@@ -1253,6 +1381,7 @@
       setupAutoLoadScroll();
       updateClothesVisibility();
       updateGenderStatus();
+      updateHistoryButtons();
     }
 
     function addEmptyOption(realCategory, displayCategory) {
@@ -1325,6 +1454,121 @@
       warningBox.innerHTML = "";
     }
 
+    function cloneStateForHistory() {
+      const copied = {};
+
+      Object.keys(state).forEach(key => {
+        if (Array.isArray(state[key])) {
+          copied[key] = state[key].slice();
+        } else if (typeof state[key] === "string") {
+          copied[key] = state[key];
+        } else {
+          copied[key] = "";
+        }
+      });
+
+      return copied;
+    }
+
+    function createHistorySnapshot() {
+      return {
+        state: cloneStateForHistory(),
+        currentCategory: currentCategory,
+        currentGender: currentGender
+      };
+    }
+
+    function pushHistorySnapshot() {
+      if (isRestoringHistory) return;
+
+      undoStack.push(createHistorySnapshot());
+
+      if (undoStack.length > HISTORY_LIMIT) {
+        undoStack.shift();
+      }
+
+      redoStack.length = 0;
+      updateHistoryButtons();
+    }
+
+    function restoreHistorySnapshot(snapshot) {
+      if (!snapshot) return;
+
+      isRestoringHistory = true;
+
+      Object.keys(state).forEach(key => {
+        delete state[key];
+      });
+
+      const snapshotState = snapshot.state || {};
+      Object.keys(snapshotState).forEach(key => {
+        if (key === "face" && Array.isArray(snapshotState[key])) {
+          state[key] = snapshotState[key].filter(Boolean).slice(0, FACE_SLOT_LIMIT);
+        } else if (Array.isArray(snapshotState[key])) {
+          state[key] = snapshotState[key].slice();
+        } else {
+          state[key] = typeof snapshotState[key] === "string" ? snapshotState[key] : "";
+        }
+      });
+
+      if (snapshot.currentGender === "f" || snapshot.currentGender === "m") {
+        currentGender = snapshot.currentGender;
+      }
+
+      if (snapshot.currentCategory && CATEGORY_ORDER.includes(snapshot.currentCategory)) {
+        currentCategory = snapshot.currentCategory;
+      }
+
+      ensureGenderDefaults(currentGender);
+      autoChooseHairBack(getState("hair"), true);
+      applyAllLayers();
+      updateClothesVisibility();
+      updateGenderStatus();
+      updateTabStatus();
+      renderItems(currentCategory);
+      saveAvatarState();
+
+      isRestoringHistory = false;
+      updateHistoryButtons();
+    }
+
+    function undoStep() {
+      if (undoStack.length === 0) return;
+
+      redoStack.push(createHistorySnapshot());
+      const previous = undoStack.pop();
+      restoreHistorySnapshot(previous);
+
+      trackGAEvent("undo_step", {
+        gender: currentGender
+      });
+    }
+
+    function redoStep() {
+      if (redoStack.length === 0) return;
+
+      undoStack.push(createHistorySnapshot());
+      const next = redoStack.pop();
+      restoreHistorySnapshot(next);
+
+      trackGAEvent("redo_step", {
+        gender: currentGender
+      });
+    }
+
+    function updateHistoryButtons() {
+      const undoBtn = document.getElementById("undoBtn");
+      const redoBtn = document.getElementById("redoBtn");
+
+      if (undoBtn) {
+        undoBtn.disabled = undoStack.length === 0;
+      }
+
+      if (redoBtn) {
+        redoBtn.disabled = redoStack.length === 0;
+      }
+    }
+
     function createGenderSwitch() {
       document.querySelectorAll("#genderSwitch button").forEach(btn => {
         btn.onclick = function () {
@@ -1350,6 +1594,8 @@
     }
 
     function switchGender(gender) {
+      pushHistorySnapshot();
+
       currentGender = gender;
 
       ensureGenderDefaults(gender);
@@ -1451,13 +1697,15 @@
           currentCategory: currentCategory,
           currentGender: currentGender,
           savedAt: Date.now(),
-          version: "gender_v5"
+          version: "gender_face3_v6"
         };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (error) {
         console.log("自动保存搭配失败：", error);
       }
+
+      updateHistoryButtons();
     }
 
     function restoreSavedAvatar() {
@@ -1480,7 +1728,11 @@
 
       if (saved.state && typeof saved.state === "object") {
         Object.keys(saved.state).forEach(key => {
-          state[key] = typeof saved.state[key] === "string" ? saved.state[key] : "";
+          if (key === "face" && Array.isArray(saved.state[key])) {
+            state[key] = saved.state[key].filter(Boolean).slice(0, FACE_SLOT_LIMIT);
+          } else {
+            state[key] = typeof saved.state[key] === "string" ? saved.state[key] : "";
+          }
         });
       } else {
         /*
@@ -1527,6 +1779,7 @@
       const realCategory = getRealCategory(category);
       const list = getCategoryList(category);
       const selectedSrc = getState(category);
+      const selectedFaceList = category === "face" ? getFaceList() : [];
 
       if (GENDER_SPLIT_CATEGORIES.includes(category)) {
         title.innerText = CATEGORY_NAME[category] + "（" + GENDER_LABEL[currentGender] + "）";
@@ -1554,7 +1807,9 @@
       /*
         如果当前已选素材在后面批次中，自动展开到它所在的位置。
       */
-      const selectedIndex = list.findIndex(item => selectedSrc === item.src);
+      const selectedIndex = category === "face"
+        ? list.findIndex(item => item.src && selectedFaceList.includes(item.src))
+        : list.findIndex(item => selectedSrc === item.src);
       if (selectedIndex >= visibleCount) {
         visibleCount = Math.min(list.length, selectedIndex + 1);
       }
@@ -1562,13 +1817,21 @@
       setVisibleCount(category, visibleCount);
 
       const visibleList = list.slice(0, visibleCount);
-      count.innerText = visibleList.length + "/" + list.length + " 个素材";
+      if (category === "face") {
+        count.innerText = visibleList.length + "/" + list.length + " 个素材，已选 " + selectedFaceList.length + "/" + FACE_SLOT_LIMIT;
+      } else {
+        count.innerText = visibleList.length + "/" + list.length + " 个素材";
+      }
 
       visibleList.forEach(item => {
         const div = document.createElement("div");
         div.className = "item";
 
-        if (selectedSrc === item.src) {
+        if (category === "face") {
+          if (isFaceSelected(item.src)) {
+            div.classList.add("selected");
+          }
+        } else if (selectedSrc === item.src) {
           div.classList.add("selected");
         }
 
@@ -1613,6 +1876,13 @@
         box.appendChild(div);
       });
 
+      if (category === "face") {
+        const faceNote = document.createElement("div");
+        faceNote.className = "auto-load-note";
+        faceNote.innerText = "脸饰品可叠加选择，最多 3 个；再次点击已选素材可取消";
+        box.appendChild(faceNote);
+      }
+
       if (visibleCount < list.length) {
         const note = document.createElement("div");
         note.className = "auto-load-note";
@@ -1628,6 +1898,38 @@
     }
 
     function chooseItem(category, src, isInit = false) {
+      if (!isInit) {
+        pushHistorySnapshot();
+      }
+
+      /*
+        脸饰品支持叠加：
+        - 点“不使用”会清空全部脸饰；
+        - 点未选择的脸饰会加入；
+        - 点已选择的脸饰会取消；
+        - 已满 3 个再点新的，会替换最早选择的一个。
+      */
+      if (category === "face") {
+        toggleFaceItem(src);
+        applyLayer("face");
+
+        if (!isInit) {
+          saveAvatarState();
+
+          trackGAEvent("choose_item", {
+            item_category: category,
+            real_category: getRealCategory(category),
+            gender: currentGender,
+            has_item: getFaceList().length > 0 ? "yes" : "no",
+            selected_count: getFaceList().length
+          });
+
+          updateTabStatus();
+        }
+
+        return;
+      }
+
       /*
         如果选中了“整套衣服”，自动清空当前性别的上衣和下装。
       */
@@ -1665,6 +1967,28 @@
     }
 
     function applyLayer(category) {
+      if (category === "face") {
+        const list = getFaceList();
+
+        FACE_LAYER_IDS.forEach((id, index) => {
+          const img = document.getElementById(id);
+
+          if (!img) return;
+
+          const src = list[index];
+
+          if (src) {
+            img.src = src;
+            img.style.display = "block";
+          } else {
+            img.removeAttribute("src");
+            img.style.display = "none";
+          }
+        });
+
+        return;
+      }
+
       const img = document.getElementById(LAYER_ID[category]);
       const src = getState(category);
 
@@ -1757,6 +2081,8 @@
     }
 
     function resetAvatar() {
+      pushHistorySnapshot();
+
       trackGAEvent("reset_avatar", {
         gender: currentGender
       });
@@ -1780,6 +2106,41 @@
 
       let index = 0;
 
+      function drawImageList(srcList, done) {
+        let listIndex = 0;
+
+        function drawOne() {
+          if (listIndex >= srcList.length) {
+            done();
+            return;
+          }
+
+          const src = srcList[listIndex];
+          listIndex++;
+
+          if (!src) {
+            drawOne();
+            return;
+          }
+
+          const img = new Image();
+
+          img.onload = function () {
+            ctx.drawImage(img, 0, 0, 140, 226);
+            drawOne();
+          };
+
+          img.onerror = function () {
+            console.log("图片加载失败：", src);
+            drawOne();
+          };
+
+          img.src = src;
+        }
+
+        drawOne();
+      }
+
       function drawNext() {
         if (index >= DRAW_ORDER.length) {
           const link = document.createElement("a");
@@ -1797,6 +2158,18 @@
         */
         if (category === "clothes" && (getState("top") || getState("bottom"))) {
           drawNext();
+          return;
+        }
+
+        if (category === "face") {
+          const faceList = getFaceList();
+
+          if (faceList.length === 0) {
+            drawNext();
+            return;
+          }
+
+          drawImageList(faceList, drawNext);
           return;
         }
 
