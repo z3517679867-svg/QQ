@@ -1069,8 +1069,20 @@ window.ITEMS = {
       "src": "assets/background/bg_252.gif"
     },
     {
+      "name": "虹光花园",
+      "src": "assets/background/4bg_253.gif"
+    },
+    {
       "name": "湖青房间",
       "src": "assets/background/bg_253.gif"
+    },
+    {
+      "name": "星爆灯街",
+      "src": "assets/background/bg_254.gif"
+    },
+    {
+      "name": "糖果月台",
+      "src": "assets/background/bg_255.gif"
     }
   ],
   "front": [
@@ -3313,6 +3325,10 @@ window.ITEMS = {
   ],
   "bottom_m": [
     {
+      "name": "虹光半裙",
+      "src": "assets/bottom_m/default.gif"
+    },
+    {
       "name": "万花瓜裤",
       "src": "assets/bottom_m/bottom_003.gif"
     },
@@ -3562,6 +3578,10 @@ window.ITEMS = {
     }
   ],
   "top_m": [
+    {
+      "name": "万花短袖",
+      "src": "assets/top_m/default.gif"
+    },
     {
       "name": "幻彩毛衣",
       "src": "assets/top_m/top_005.gif"
@@ -5153,6 +5173,10 @@ window.ITEMS = {
   ],
   "hair_m": [
     {
+      "name": "舞会发辫",
+      "src": "assets/hair_m/default.gif"
+    },
+    {
       "name": "月桂院发",
       "src": "assets/hair_m/hair_012.gif"
     },
@@ -5863,6 +5887,14 @@ window.ITEMS = {
     {
       "name": "柔纱框镜",
       "src": "assets/glasses/21.gif"
+    },
+    {
+      "name": "彩梦镜框",
+      "src": "assets/glasses/22.gif"
+    },
+    {
+      "name": "万花护镜",
+      "src": "assets/glasses/23.gif"
     },
     {
       "name": "电波心镜",
@@ -6787,6 +6819,18 @@ window.ITEMS = {
     {
       "name": "星爆横幅",
       "src": "assets/text/text_105.gif"
+    },
+    {
+      "name": "星爆招牌",
+      "src": "assets/text/text_106.gif"
+    },
+    {
+      "name": "虹光话语",
+      "src": "assets/text/text_107.gif"
+    },
+    {
+      "name": "霓虹注释",
+      "src": "assets/text/text_108.gif"
     },
     {
       "name": "流彩标题",

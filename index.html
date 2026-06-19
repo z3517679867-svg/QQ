@@ -1550,6 +1550,38 @@ h1 {
       }
     }
 
+    /* =========================
+       2026-06-19 电脑端形象放大版
+       只放大电脑端左侧预览人物，不改手机端和功能逻辑
+       ========================= */
+
+    @media (min-width: 761px) {
+      .preview-box {
+        width: 350px !important;
+      }
+
+      .avatar-outer {
+        min-height: 350px !important;
+        padding: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+
+      .avatar {
+        width: 190px !important;
+        height: 307px !important;
+        transform: none !important;
+        transform-origin: center center !important;
+        overflow: visible !important;
+      }
+
+      .layer {
+        width: 190px !important;
+        height: 307px !important;
+      }
+    }
+
   </style>
 
   <!-- Google Analytics 4 统计代码
