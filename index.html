@@ -956,7 +956,416 @@
         border-radius: 7px;
       }
     }
+/* =========================
+   QQ2010 怀旧窗口风
+   只改视觉，不改功能逻辑
+   ========================= */
 
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Microsoft YaHei", Tahoma, Arial, sans-serif;
+  color: #24415a;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255,255,255,0.95) 0 4%, transparent 9%),
+    radial-gradient(circle at 22% 16%, rgba(255,255,255,0.85) 0 6%, transparent 12%),
+    radial-gradient(circle at 72% 10%, rgba(255,255,255,0.78) 0 5%, transparent 11%),
+    linear-gradient(180deg, #2a8df2 0%, #55b8ff 42%, #bceaff 64%, #71c84a 65%, #3ea63b 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34vh;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 30% 10%, rgba(255,255,255,0.28), transparent 32%),
+    linear-gradient(180deg, #83d46c 0%, #48aa3d 52%, #2f8c2d 100%);
+}
+
+.page {
+  position: relative;
+  width: 1120px;
+  max-width: 96%;
+  margin: 34px auto;
+  padding: 48px 14px 14px;
+  border: 1px solid #0b8fb7;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(224,248,255,0.96), rgba(245,253,255,0.96));
+  box-shadow:
+    0 22px 44px rgba(0, 54, 108, 0.32),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+  overflow: hidden;
+}
+
+.page::before {
+  content: "复古换装小屋 2010";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 38px;
+  padding-left: 18px;
+  line-height: 38px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #073d66;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+  background:
+    linear-gradient(180deg, #7deaff 0%, #22c2f1 48%, #00a4dd 49%, #1dc8ed 100%);
+  border-bottom: 1px solid #078db8;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.page::after {
+  content: "＿  □  ×";
+  position: absolute;
+  right: 13px;
+  top: 6px;
+  color: rgba(255,255,255,0.95);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 9px;
+  text-shadow: 0 1px 2px rgba(0,70,110,0.45);
+}
+
+h1 {
+  display: none;
+}
+
+.main {
+  gap: 14px;
+  align-items: stretch;
+}
+
+.preview-box,
+.panel {
+  border-radius: 6px;
+  border: 1px solid #8ccde8;
+  background: rgba(255,255,255,0.94);
+  box-shadow:
+    0 4px 14px rgba(0, 83, 126, 0.18),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.preview-box {
+  width: 292px;
+  padding: 14px 14px 12px;
+  background:
+    linear-gradient(180deg, #f8fdff 0%, #e4f6ff 100%);
+}
+
+.preview-title {
+  position: relative;
+  margin: -2px -2px 10px;
+  padding: 9px 10px;
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 16px;
+  text-align: left;
+  background: linear-gradient(180deg, #5fd7ff, #0aa6df);
+  text-shadow: 0 1px 1px rgba(0,75,120,0.55);
+}
+
+.preview-title::after {
+  content: "☀";
+  position: absolute;
+  right: 12px;
+  top: 7px;
+  color: #fff6a5;
+}
+
+.avatar-outer {
+  margin: 0 0 12px;
+  padding: 16px;
+  border-radius: 5px;
+  border: 1px solid #b8d9e9;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.88), rgba(229,247,255,0.92)),
+    radial-gradient(circle at center, rgba(255,255,255,0.8), transparent 65%);
+  box-shadow:
+    inset 0 0 0 3px rgba(255,255,255,0.7),
+    inset 0 0 18px rgba(65,180,230,0.18);
+}
+
+.avatar {
+  filter: drop-shadow(0 5px 6px rgba(0,70,120,0.18));
+}
+
+.btn-row {
+  gap: 7px;
+  justify-content: center;
+  background: linear-gradient(180deg, #f6fcff, #e2f5ff);
+  border: 1px solid #b6d9ec;
+  border-radius: 6px;
+  padding: 9px 6px;
+}
+
+.save-btn,
+.reset-btn,
+.notice-btn,
+.undo-btn,
+.redo-btn,
+.random-btn {
+  border: 1px solid #4faed5 !important;
+  border-radius: 4px !important;
+  padding: 7px 11px !important;
+  color: #06466b !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffffff 0%, #c9f2ff 48%, #8bdcff 49%, #dff8ff 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 2px 4px rgba(0,90,140,0.18) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.save-btn:hover,
+.reset-btn:hover,
+.notice-btn:hover,
+.undo-btn:hover:not(:disabled),
+.redo-btn:hover:not(:disabled),
+.random-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #ffe99d 48%, #ffd953 49%, #fff4bc 100%) !important;
+  border-color: #e2a600 !important;
+  color: #7c4b00 !important;
+}
+
+.undo-btn:disabled,
+.redo-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+#itemsWarning {
+  padding: 0 12px;
+}
+
+.gender-switch {
+  padding: 10px 12px;
+  border-bottom: 1px solid #9cd6ec;
+  background: linear-gradient(180deg, #dff9ff, #bfefff);
+}
+
+.gender-label {
+  color: #075984;
+}
+
+.gender-switch button {
+  border-radius: 4px;
+  border: 1px solid #4faed5;
+  background: linear-gradient(180deg, #ffffff, #d2f5ff);
+  color: #075984;
+}
+
+.gender-switch button.active {
+  color: #ffffff;
+  border-color: #0089c0;
+  background: linear-gradient(180deg, #41d2ff, #008fd0);
+}
+
+.tabs {
+  margin: 0;
+  padding: 8px 10px;
+  gap: 6px;
+  border-bottom: 1px solid #9cd6ec;
+  background:
+    linear-gradient(180deg, #f7fdff, #d9f5ff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.tabs button {
+  border-radius: 4px;
+  padding: 8px 13px;
+  border: 1px solid #7bc5e5;
+  color: #075984;
+  background: linear-gradient(180deg, #ffffff, #d9f4ff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.tabs button:hover {
+  transform: none;
+  background: linear-gradient(180deg, #ffffff, #fff2b2);
+  border-color: #e7bd28;
+}
+
+.tabs button.active {
+  color: #5f3a00;
+  border-color: #e6b800;
+  background: linear-gradient(180deg, #fff8c7, #ffe171);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.category-head {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d3edf8;
+  background: #f7fcff;
+  color: #075984;
+}
+
+.category-title {
+  color: #075984;
+}
+
+.category-count {
+  color: #5b91a9;
+}
+
+.items {
+  padding: 12px;
+  background:
+    linear-gradient(180deg, #ffffff, #f0fbff);
+}
+
+.item {
+  border-radius: 4px;
+  min-height: 198px;
+  background: #ffffff;
+  border: 1px solid #c9e7f4;
+  box-shadow: none;
+}
+
+.item:hover {
+  transform: none;
+  border-color: #4fb5dc;
+  background: #f3fcff;
+  box-shadow: 0 3px 10px rgba(0,107,160,0.15);
+}
+
+.item.selected {
+  border-color: #e5b900;
+  background: #fff3a6;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.85);
+}
+
+.item img,
+.empty-item,
+.hair-thumb {
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, #ffffff, #eef8ff);
+  border: 1px solid #c5e3f0;
+}
+
+.item-name {
+  color: #24415a;
+}
+
+.warning {
+  background: #fffbdc;
+  border-color: #e4c85d;
+  color: #684b00;
+}
+
+.notice-modal .notice-panel {
+  border-radius: 6px;
+  border-color: #60bddd;
+  background: #f7fdff;
+}
+
+.notice-panel h2 {
+  color: #075984;
+}
+
+.notice-ok,
+.notice-close {
+  border-radius: 4px;
+}
+
+@media (max-width: 760px) {
+  body {
+    background:
+      radial-gradient(circle at 18% 8%, rgba(255,255,255,0.92) 0 6%, transparent 15%),
+      linear-gradient(180deg, #2f94f6 0%, #73caff 48%, #c9f1ff 62%, #68c74b 63%, #3b9c33 100%);
+  }
+
+  .page {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 36px 6px 8px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .page::before {
+    height: 34px;
+    line-height: 34px;
+    font-size: 16px;
+    padding-left: 12px;
+  }
+
+  .page::after {
+    top: 4px;
+    right: 8px;
+    font-size: 17px;
+    letter-spacing: 6px;
+  }
+
+  .main {
+    gap: 7px;
+  }
+
+  .preview-box {
+    border-radius: 6px;
+    width: 100%;
+    padding: 6px 8px;
+  }
+
+  .avatar-outer {
+    min-height: 345px;
+    padding-top: 4px;
+    margin-bottom: 5px;
+  }
+
+  .btn-row {
+    padding: 6px 4px;
+  }
+
+  .save-btn,
+  .reset-btn,
+  .notice-btn,
+  .undo-btn,
+  .redo-btn,
+  .random-btn {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .panel {
+    border-radius: 6px 6px 0 0;
+  }
+
+  .gender-switch,
+  .tabs {
+    background: linear-gradient(180deg, #f6fdff, #d4f3ff);
+  }
+
+  .items {
+    padding: 8px;
+  }
+
+  .item {
+    min-height: 136px;
+  }
+}
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -1011,7 +1420,7 @@
         <div class="btn-row">
           <button class="undo-btn" id="undoBtn" onclick="undoStep()" disabled>返回上一步</button>
           <button class="redo-btn" id="redoBtn" onclick="redoStep()" disabled>前进一步</button>
-          <button class="random-btn" onclick="randomAllItems()">随机</button>
+          <button class="random-btn" onclick="randomAllItems()">美观随机</button>
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
           <button class="notice-btn" onclick="openNotice()">声明</button>
@@ -2196,104 +2605,141 @@
     }
 
     function randomAllItems() {
-      pushHistorySnapshot();
+  pushHistorySnapshot();
 
-      /*
-        随机整个素材库：
-        - 所有可显示分类都会参与随机；
-        - 当前性别下，衣服/上衣/下装/头发会读取对应男女素材；
-        - 脸饰品随机 1 到 3 个；
-        - 衣服逻辑避免冲突：随机选择“整套衣服”或“上衣+下装”。
-      */
+  /*
+    美观随机：
+    只随机核心形象，减少复杂装饰。
+    目标：搭配更干净、更像正常头像，而不是把所有素材堆满。
+  */
 
-      const randomCategories = [
-        "background",
-        "front",
-        "wing",
-        "body",
-        "neck",
-        "hair",
-        "hat",
-        "glasses",
-        "earring",
-        "face",
-        "hand",
-        "effect",
-        "partner",
-        "text",
-        "frame"
-      ];
+  // 1. 先清空容易显得杂乱的装饰层
+  const clearCategories = [
+    "front",
+    "wing",
+    "effect",
+    "partner",
+    "text",
+    "frame",
+    "hand"
+  ];
 
-      randomCategories.forEach(category => {
-        if (category === "face") {
-          const maxFaceCount = Math.min(FACE_SLOT_LIMIT, getRandomSelectableList("face").length);
-          const faceCount = maxFaceCount > 0 ? Math.floor(Math.random() * maxFaceCount) + 1 : 0;
-          const faceItems = getRandomItems("face", faceCount);
-          setFaceList(faceItems.map(item => item.src));
-          applyLayer("face");
-          return;
-        }
+  clearCategories.forEach(category => {
+    setState(category, "");
+    applyLayer(category);
+  });
 
-        const item = getRandomSelectableItem(category);
+  // 2. 背景：随机，但只换一个
+  const backgroundItem = getRandomSelectableItem("background");
+  setState("background", backgroundItem && backgroundItem.src ? backgroundItem.src : "");
+  applyLayer("background");
 
-        if (item && item.src) {
-          setState(category, item.src);
-        } else {
-          setState(category, "");
-        }
+  // 3. 身体/脸：保留或随机一个
+  const bodyItem = getRandomSelectableItem("body");
+  if (bodyItem && bodyItem.src) {
+    setState("body", bodyItem.src);
+    applyLayer("body");
+  }
 
-        applyLayer(category);
+  // 4. 头发：必随机一个，并自动带出后发
+  const hairItem = getRandomSelectableItem("hair");
+  if (hairItem && hairItem.src) {
+    setState("hair", hairItem.src);
+    applyLayer("hair");
+    autoChooseHairBack(hairItem.src, true);
+  } else {
+    setState("hair", "");
+    setState("hair_back", "");
+    applyLayer("hair");
+    applyLayer("hair_back");
+  }
 
-        if (category === "hair") {
-          autoChooseHairBack(getState("hair"), true);
-        }
-      });
+  // 5. 衣服逻辑：优先整套衣服，少量概率用上衣+下装
+  const hasClothes = getRandomSelectableList("clothes").length > 0;
+  const hasTop = getRandomSelectableList("top").length > 0;
+  const hasBottom = getRandomSelectableList("bottom").length > 0;
 
-      /*
-        衣服、上衣、下装互斥处理：
-        方案 A：随机整套衣服，清空上衣和下装；
-        方案 B：随机上衣 + 下装，清空整套衣服。
-        如果某一方案缺素材，会自动退回另一方案。
-      */
-      const hasClothes = getRandomSelectableList("clothes").length > 0;
-      const hasTop = getRandomSelectableList("top").length > 0;
-      const hasBottom = getRandomSelectableList("bottom").length > 0;
-      const useFullClothes = hasClothes && (!(hasTop || hasBottom) || Math.random() < 0.55);
+  const useFullClothes = hasClothes && Math.random() < 0.78;
 
-      if (useFullClothes) {
-        const clothesItem = getRandomSelectableItem("clothes");
+  if (useFullClothes) {
+    const clothesItem = getRandomSelectableItem("clothes");
 
-        setState("clothes", clothesItem && clothesItem.src ? clothesItem.src : "");
-        setState("top", "");
-        setState("bottom", "");
+    setState("clothes", clothesItem && clothesItem.src ? clothesItem.src : "");
+    setState("top", "");
+    setState("bottom", "");
 
-        applyLayer("clothes");
-        applyLayer("top");
-        applyLayer("bottom");
-      } else {
-        const topItem = getRandomSelectableItem("top");
-        const bottomItem = getRandomSelectableItem("bottom");
+    applyLayer("clothes");
+    applyLayer("top");
+    applyLayer("bottom");
+  } else {
+    const topItem = getRandomSelectableItem("top");
+    const bottomItem = getRandomSelectableItem("bottom");
 
-        setState("clothes", "");
-        setState("top", topItem && topItem.src ? topItem.src : "");
-        setState("bottom", bottomItem && bottomItem.src ? bottomItem.src : "");
+    setState("clothes", "");
+    setState("top", topItem && topItem.src ? topItem.src : "");
+    setState("bottom", bottomItem && bottomItem.src ? bottomItem.src : "");
 
-        applyLayer("clothes");
-        applyLayer("top");
-        applyLayer("bottom");
-      }
+    applyLayer("clothes");
+    applyLayer("top");
+    applyLayer("bottom");
+  }
 
-      updateClothesVisibility();
-      saveAvatarState();
-      renderItems(currentCategory);
-      updateTabStatus();
+  // 6. 颈饰：40% 概率出现
+  if (Math.random() < 0.4) {
+    const neckItem = getRandomSelectableItem("neck");
+    setState("neck", neckItem && neckItem.src ? neckItem.src : "");
+  } else {
+    setState("neck", "");
+  }
+  applyLayer("neck");
 
-      trackGAEvent("random_all_items", {
-        gender: currentGender,
-        face_count: getFaceList().length,
-        outfit_mode: useFullClothes ? "clothes" : "top_bottom"
-      });
-    }
+  // 7. 帽子：25% 概率出现
+  if (Math.random() < 0.25) {
+    const hatItem = getRandomSelectableItem("hat");
+    setState("hat", hatItem && hatItem.src ? hatItem.src : "");
+  } else {
+    setState("hat", "");
+  }
+  applyLayer("hat");
+
+  // 8. 眼镜：25% 概率出现
+  if (Math.random() < 0.25) {
+    const glassesItem = getRandomSelectableItem("glasses");
+    setState("glasses", glassesItem && glassesItem.src ? glassesItem.src : "");
+  } else {
+    setState("glasses", "");
+  }
+  applyLayer("glasses");
+
+  // 9. 耳饰：25% 概率出现
+  if (Math.random() < 0.25) {
+    const earringItem = getRandomSelectableItem("earring");
+    setState("earring", earringItem && earringItem.src ? earringItem.src : "");
+  } else {
+    setState("earring", "");
+  }
+  applyLayer("earring");
+
+  // 10. 脸饰：最多只随机 1 个，35% 概率出现
+  if (Math.random() < 0.35) {
+    const faceItem = getRandomSelectableItem("face");
+    setFaceList(faceItem && faceItem.src ? [faceItem.src] : []);
+  } else {
+    setFaceList([]);
+  }
+  applyLayer("face");
+
+  updateClothesVisibility();
+  saveAvatarState();
+  renderItems(currentCategory);
+  updateTabStatus();
+
+  trackGAEvent("random_beauty_items", {
+    gender: currentGender,
+    face_count: getFaceList().length,
+    outfit_mode: useFullClothes ? "clothes" : "top_bottom"
+  });
+}
 
     function resetAvatar() {
       pushHistorySnapshot();
