@@ -932,6 +932,31 @@
       }
     }
 
+  
+    .random-btn {
+      border: none;
+      color: #ffffff;
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      background: linear-gradient(180deg, #ffb3dc, #e36aae);
+      box-shadow: 0 5px 14px rgba(214, 83, 157, 0.24);
+    }
+
+    .random-btn:hover {
+      background: linear-gradient(180deg, #ff9bd0, #d94e9b);
+    }
+
+    @media (max-width: 760px) {
+      .random-btn {
+        padding: 7px 12px;
+        font-size: 12px;
+        border-radius: 7px;
+      }
+    }
+
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -986,6 +1011,7 @@
         <div class="btn-row">
           <button class="undo-btn" id="undoBtn" onclick="undoStep()" disabled>返回上一步</button>
           <button class="redo-btn" id="redoBtn" onclick="redoStep()" disabled>前进一步</button>
+          <button class="random-btn" onclick="randomAllItems()">随机</button>
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
           <button class="notice-btn" onclick="openNotice()">声明</button>
@@ -1014,7 +1040,7 @@
   </div>
 
   <!-- 这个文件由“生成素材清单.py”自动生成 -->
-  <script src="items.js?v=genderFace3UndoRedo_20260619"></script>
+  <script src="items.js?v=defaultFace3UndoRedoRandomAll_20260619"></script>
 
   <script>
     const ITEMS = window.ITEMS || {};
@@ -1185,7 +1211,7 @@
       3. 当前搭配自动保存到 localStorage，刷新后自动恢复。
       4. 男女分类各自保存衣服、上衣、下装、头发。
     */
-    const STORAGE_KEY = "qqshow_avatar_state_v5_gender";
+    const STORAGE_KEY = "qqshow_avatar_state_v7_default_face3_undo";
     const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
     const HISTORY_LIMIT = 50;
     const visibleCounts = {};
@@ -1198,9 +1224,13 @@
       return category + "_" + gender;
     }
 
+    function categoryHasRealItems(categoryName) {
+      return Array.isArray(ITEMS[categoryName]) && ITEMS[categoryName].some(item => item && item.src);
+    }
+
     function genderCandidateExists(category, gender) {
       const candidate = genderCategoryName(category, gender);
-      return Array.isArray(ITEMS[candidate]) && ITEMS[candidate].length > 0;
+      return categoryHasRealItems(candidate);
     }
 
     function getRealCategory(category) {
@@ -1212,18 +1242,22 @@
 
       /*
         兼容旧结构：
-        如果 clothes_f / hair_f 等不存在或为空，而旧 clothes / hair 里有素材，
-        就继续读取旧分类，避免网站直接空掉。
+        只有 clothes_f / hair_f 等分类里真的存在素材文件时，才读取男女分类。
+        如果男女分类只有“不使用”空项，就回退到旧 clothes / hair 里的 default。
       */
-      if (Array.isArray(ITEMS[candidate]) && ITEMS[candidate].length > 0) {
+      if (categoryHasRealItems(candidate)) {
         return candidate;
       }
 
-      if (Array.isArray(ITEMS[category]) && ITEMS[category].length > 0) {
+      if (categoryHasRealItems(category)) {
         return category;
       }
 
-      return candidate;
+      if (Array.isArray(ITEMS[candidate])) {
+        return candidate;
+      }
+
+      return category;
     }
 
     function getStateKey(category) {
@@ -1320,6 +1354,47 @@
     function getCategoryList(category) {
       const realCategory = getRealCategory(category);
       return ITEMS[realCategory] || [];
+    }
+
+    function isDefaultItem(item) {
+      if (!item || !item.src) return false;
+
+      const fileName = item.src.split("/").pop().toLowerCase();
+
+      return fileName === "default.gif"
+        || fileName === "default.png"
+        || fileName === "default.jpg"
+        || fileName === "default.jpeg"
+        || fileName === "default.webp"
+        || fileName.includes("default");
+    }
+
+    function getDefaultSrcForCategory(category) {
+      const list = getCategoryList(category);
+
+      /*
+        优先选择真实文件名里含 default 的素材。
+        这样无论 default 是否排在第一，都能作为默认形象。
+      */
+      const defaultItem = list.find(item => item && item.src && isDefaultItem(item));
+      if (defaultItem) {
+        return defaultItem.src;
+      }
+
+      /*
+        如果没有 default，优先选择“不使用”空项。
+        这样帽子、眼镜、脸饰、手持物等不会随机穿上第一个素材。
+      */
+      const emptyItem = list.find(item => item && item.src === "");
+      if (emptyItem) {
+        return "";
+      }
+
+      /*
+        身体/脸等必需层如果没有 default，就退回第一个真实素材。
+      */
+      const firstRealItem = list.find(item => item && item.src);
+      return firstRealItem ? firstRealItem.src : "";
     }
 
     function getVisibleCount(category) {
@@ -1661,8 +1736,7 @@
           return;
         }
 
-        const list = getCategoryList(category);
-        state[key] = list.length > 0 ? list[0].src : "";
+        state[key] = getDefaultSrcForCategory(category);
       });
 
       const hairBackKey = getStateKey("hair_back");
@@ -1676,18 +1750,20 @@
     }
 
     function setDefaultAvatar() {
+      /*
+        恢复默认时，严格按素材文件里的 default 显示。
+        有 default 文件：使用 default。
+        没有 default 文件：优先不使用该分类。
+        必需层没有 default：退回第一个真实素材。
+      */
       CATEGORY_ORDER.forEach(category => {
-        const list = getCategoryList(category);
-
-        if (list.length > 0) {
-          chooseItem(category, list[0].src, true);
-        } else {
-          setState(category, "");
-          applyLayer(category);
-        }
+        const defaultSrc = getDefaultSrcForCategory(category);
+        chooseItem(category, defaultSrc, true);
       });
 
       autoChooseHairBack(getState("hair"), true);
+      applyAllLayers();
+      updateClothesVisibility();
     }
 
     function saveAvatarState() {
@@ -1697,7 +1773,7 @@
           currentCategory: currentCategory,
           currentGender: currentGender,
           savedAt: Date.now(),
-          version: "gender_face3_v6"
+          version: "default_face3_undo_random_all_v9"
         };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1712,7 +1788,7 @@
       let saved = null;
 
       try {
-        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           saved = JSON.parse(raw);
         }
@@ -2078,6 +2154,145 @@
       } else {
         clothesImg.style.display = getState("clothes") ? "block" : "none";
       }
+    }
+
+    function getRandomSelectableItem(category) {
+      const list = getCategoryList(category);
+
+      /*
+        随机优先排除“不使用”和 default。
+        如果该分类全是 default 或只有一个真实素材，则退回全部真实素材随机。
+      */
+      const nonDefaultList = list.filter(item => item && item.src && !isDefaultItem(item));
+      const realList = list.filter(item => item && item.src);
+      const pool = nonDefaultList.length > 0 ? nonDefaultList : realList;
+
+      if (pool.length === 0) {
+        return null;
+      }
+
+      const index = Math.floor(Math.random() * pool.length);
+      return pool[index];
+    }
+
+    function getRandomSelectableList(category) {
+      const list = getCategoryList(category);
+      const nonDefaultList = list.filter(item => item && item.src && !isDefaultItem(item));
+      const realList = list.filter(item => item && item.src);
+
+      return nonDefaultList.length > 0 ? nonDefaultList : realList;
+    }
+
+    function getRandomItems(category, count) {
+      const pool = getRandomSelectableList(category).slice();
+      const result = [];
+
+      while (pool.length > 0 && result.length < count) {
+        const index = Math.floor(Math.random() * pool.length);
+        result.push(pool.splice(index, 1)[0]);
+      }
+
+      return result;
+    }
+
+    function randomAllItems() {
+      pushHistorySnapshot();
+
+      /*
+        随机整个素材库：
+        - 所有可显示分类都会参与随机；
+        - 当前性别下，衣服/上衣/下装/头发会读取对应男女素材；
+        - 脸饰品随机 1 到 3 个；
+        - 衣服逻辑避免冲突：随机选择“整套衣服”或“上衣+下装”。
+      */
+
+      const randomCategories = [
+        "background",
+        "front",
+        "wing",
+        "body",
+        "neck",
+        "hair",
+        "hat",
+        "glasses",
+        "earring",
+        "face",
+        "hand",
+        "effect",
+        "partner",
+        "text",
+        "frame"
+      ];
+
+      randomCategories.forEach(category => {
+        if (category === "face") {
+          const maxFaceCount = Math.min(FACE_SLOT_LIMIT, getRandomSelectableList("face").length);
+          const faceCount = maxFaceCount > 0 ? Math.floor(Math.random() * maxFaceCount) + 1 : 0;
+          const faceItems = getRandomItems("face", faceCount);
+          setFaceList(faceItems.map(item => item.src));
+          applyLayer("face");
+          return;
+        }
+
+        const item = getRandomSelectableItem(category);
+
+        if (item && item.src) {
+          setState(category, item.src);
+        } else {
+          setState(category, "");
+        }
+
+        applyLayer(category);
+
+        if (category === "hair") {
+          autoChooseHairBack(getState("hair"), true);
+        }
+      });
+
+      /*
+        衣服、上衣、下装互斥处理：
+        方案 A：随机整套衣服，清空上衣和下装；
+        方案 B：随机上衣 + 下装，清空整套衣服。
+        如果某一方案缺素材，会自动退回另一方案。
+      */
+      const hasClothes = getRandomSelectableList("clothes").length > 0;
+      const hasTop = getRandomSelectableList("top").length > 0;
+      const hasBottom = getRandomSelectableList("bottom").length > 0;
+      const useFullClothes = hasClothes && (!(hasTop || hasBottom) || Math.random() < 0.55);
+
+      if (useFullClothes) {
+        const clothesItem = getRandomSelectableItem("clothes");
+
+        setState("clothes", clothesItem && clothesItem.src ? clothesItem.src : "");
+        setState("top", "");
+        setState("bottom", "");
+
+        applyLayer("clothes");
+        applyLayer("top");
+        applyLayer("bottom");
+      } else {
+        const topItem = getRandomSelectableItem("top");
+        const bottomItem = getRandomSelectableItem("bottom");
+
+        setState("clothes", "");
+        setState("top", topItem && topItem.src ? topItem.src : "");
+        setState("bottom", bottomItem && bottomItem.src ? bottomItem.src : "");
+
+        applyLayer("clothes");
+        applyLayer("top");
+        applyLayer("bottom");
+      }
+
+      updateClothesVisibility();
+      saveAvatarState();
+      renderItems(currentCategory);
+      updateTabStatus();
+
+      trackGAEvent("random_all_items", {
+        gender: currentGender,
+        face_count: getFaceList().length,
+        outfit_mode: useFullClothes ? "clothes" : "top_bottom"
+      });
     }
 
     function resetAvatar() {
