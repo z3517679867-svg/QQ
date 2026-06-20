@@ -1207,6 +1207,26 @@ window.ITEMS = {
     {
       "name": "糖果花园",
       "src": "assets/background/bg_289.gif"
+    },
+    {
+      "name": "珠光画室",
+      "src": "assets/background/bg_290.gif"
+    },
+    {
+      "name": "珠光夜市",
+      "src": "assets/background/bg_291.gif"
+    },
+    {
+      "name": "幻糖海岸",
+      "src": "assets/background/bg_292.gif"
+    },
+    {
+      "name": "糖果梦廊",
+      "src": "assets/background/bg_293.gif"
+    },
+    {
+      "name": "幻彩阁楼",
+      "src": "assets/background/bg_294.gif"
     }
   ],
   "front": [
@@ -2976,6 +2996,14 @@ window.ITEMS = {
     {
       "name": "丝带偶像",
       "src": "assets/clothes_f/cloth_406.gif"
+    },
+    {
+      "name": "小熊礼裙",
+      "src": "assets/clothes_f/cloth_407.gif"
+    },
+    {
+      "name": "绒球机车",
+      "src": "assets/clothes_f/cloth_408.gif"
     }
   ],
   "clothes_m": [
@@ -3378,6 +3406,10 @@ window.ITEMS = {
     {
       "name": "蕾丝侦探",
       "src": "assets/clothes_m/cloth_409.gif"
+    },
+    {
+      "name": "彩梦水手",
+      "src": "assets/clothes_m/cloth_410.gif"
     }
   ],
   "bottom": [
@@ -3856,6 +3888,14 @@ window.ITEMS = {
     {
       "name": "糖果纱衣",
       "src": "assets/top_f/top_045.gif"
+    },
+    {
+      "name": "幻糖卫衣",
+      "src": "assets/top_f/top_046.gif"
+    },
+    {
+      "name": "万花围肩",
+      "src": "assets/top_f/top_047.gif"
     }
   ],
   "top_m": [
@@ -5776,6 +5816,18 @@ window.ITEMS = {
     {
       "name": "烟火绒发",
       "src": "assets/hair_m/hair_189.gif"
+    },
+    {
+      "name": "雪绒层发",
+      "src": "assets/hair_m/hair_190.gif"
+    },
+    {
+      "name": "银河发尾",
+      "src": "assets/hair_m/hair_191.gif"
+    },
+    {
+      "name": "绸缎偶发",
+      "src": "assets/hair_m/hair_192.gif"
     }
   ],
   "hat": [
@@ -6230,6 +6282,14 @@ window.ITEMS = {
     {
       "name": "珠光织帽",
       "src": "assets/hat/hat_115.gif"
+    },
+    {
+      "name": "万花水帽",
+      "src": "assets/hat/hat_116.gif"
+    },
+    {
+      "name": "糖果礼帽",
+      "src": "assets/hat/hat_117.gif"
     }
   ],
   "glasses": [
@@ -6462,6 +6522,18 @@ window.ITEMS = {
     {
       "name": "幻彩花耳",
       "src": "assets/earring/31.gif"
+    },
+    {
+      "name": "流彩星耳",
+      "src": "assets/earring/32.gif"
+    },
+    {
+      "name": "彩梦晶坠",
+      "src": "assets/earring/33.gif"
+    },
+    {
+      "name": "彩梦流苏",
+      "src": "assets/earring/34.gif"
     }
   ],
   "face": [
@@ -6572,8 +6644,16 @@ window.ITEMS = {
       "src": "assets/hand/6.gif"
     },
     {
+      "name": "星爆气球",
+      "src": "assets/hand/7.gif"
+    },
+    {
       "name": "花火花束",
       "src": "assets/hand/hand_007.gif"
+    },
+    {
+      "name": "虹光信封",
+      "src": "assets/hand/8.gif"
     },
     {
       "name": "电波话筒",
@@ -6688,6 +6768,18 @@ window.ITEMS = {
     {
       "name": "流彩流光",
       "src": "assets/effect/23.gif"
+    },
+    {
+      "name": "彩梦电波",
+      "src": "assets/effect/24.gif"
+    },
+    {
+      "name": "星爆魔阵",
+      "src": "assets/effect/25.gif"
+    },
+    {
+      "name": "霓虹魔阵",
+      "src": "assets/effect/26.gif"
     },
     {
       "name": "流彩花火",
@@ -6902,6 +6994,18 @@ window.ITEMS = {
     {
       "name": "星爆幽灵",
       "src": "assets/partner/52.gif"
+    },
+    {
+      "name": "流彩海豹",
+      "src": "assets/partner/53.gif"
+    },
+    {
+      "name": "幻糖陪伴",
+      "src": "assets/partner/54.gif"
+    },
+    {
+      "name": "珠光机器",
+      "src": "assets/partner/55.gif"
     },
     {
       "name": "南瓜花灵",
@@ -7430,6 +7534,22 @@ window.ITEMS = {
       "src": "assets/text/text_130.gif"
     },
     {
+      "name": "虹光招牌",
+      "src": "assets/text/text_131.gif"
+    },
+    {
+      "name": "流彩横幅",
+      "src": "assets/text/text_132.gif"
+    },
+    {
+      "name": "虹光横幅",
+      "src": "assets/text/text_133.gif"
+    },
+    {
+      "name": "万花标识",
+      "src": "assets/text/text_134.gif"
+    },
+    {
       "name": "流彩标题",
       "src": "assets/text/312.gif"
     },
@@ -7650,6 +7770,10 @@ window.ITEMS = {
     {
       "name": "虹光边框",
       "src": "assets/frame/54.gif"
+    },
+    {
+      "name": "霓虹晶框",
+      "src": "assets/frame/55.gif"
     },
     {
       "name": "春白胶框",
