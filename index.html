@@ -1808,6 +1808,7 @@ h1 {
     const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
     const HISTORY_LIMIT = 50;
     const visibleCounts = {};
+    const categoryScrollTops = {};
     const undoStack = [];
     const redoStack = [];
     let autoLoadTimer = null;
@@ -2015,6 +2016,42 @@ h1 {
       visibleCounts[realCategory] = value;
     }
 
+    function getCategoryScrollKey(category) {
+      return getRealCategory(category);
+    }
+
+    function rememberCategoryScroll(category) {
+      const box = document.getElementById("items");
+      if (!box || !category) return;
+
+      categoryScrollTops[getCategoryScrollKey(category)] = box.scrollTop || 0;
+    }
+
+    function getRememberedCategoryScroll(category) {
+      const key = getCategoryScrollKey(category);
+      return typeof categoryScrollTops[key] === "number" ? categoryScrollTops[key] : 0;
+    }
+
+    function restoreCategoryScroll(category, fallbackTop) {
+      const box = document.getElementById("items");
+      if (!box) return;
+
+      const targetTop = typeof fallbackTop === "number"
+        ? fallbackTop
+        : getRememberedCategoryScroll(category);
+
+      requestAnimationFrame(function () {
+        box.scrollTop = targetTop || 0;
+
+        /*
+          部分手机浏览器首次布局会晚一帧，第二次设置能避免回弹到顶部。
+        */
+        setTimeout(function () {
+          box.scrollTop = targetTop || 0;
+        }, 0);
+      });
+    }
+
     function getBatchSize() {
       return window.innerWidth <= 760 ? 30 : 60;
     }
@@ -2031,6 +2068,8 @@ h1 {
       if (!box) return;
 
       box.addEventListener("scroll", function () {
+        rememberCategoryScroll(currentCategory);
+
         if (autoLoadTimer) return;
 
         autoLoadTimer = setTimeout(function () {
@@ -2045,6 +2084,7 @@ h1 {
 
           if (distanceToBottom < 360) {
             const previousScrollTop = box.scrollTop;
+            categoryScrollTops[getCategoryScrollKey(currentCategory)] = previousScrollTop;
             increaseVisibleCount(currentCategory);
             renderItems(currentCategory, { preserveScrollTop: previousScrollTop });
           }
@@ -2278,13 +2318,14 @@ h1 {
 
     function switchGender(gender) {
       pushHistorySnapshot();
+      rememberCategoryScroll(currentCategory);
 
       currentGender = gender;
 
       ensureGenderDefaults(gender);
       applyAllLayers();
       updateClothesVisibility();
-      renderItems(currentCategory, { resetScrollTop: true });
+      renderItems(currentCategory, { restoreScrollTop: true });
       updateGenderStatus();
       updateTabStatus();
       saveAvatarState();
@@ -2309,8 +2350,12 @@ h1 {
             gender: currentGender
           });
 
+          if (currentCategory !== category) {
+            rememberCategoryScroll(currentCategory);
+          }
+
           currentCategory = category;
-          renderItems(category, { resetScrollTop: true });
+          renderItems(category, { restoreScrollTop: true });
           updateTabStatus();
         };
 
@@ -2457,6 +2502,7 @@ h1 {
 
       const preserveScrollTop = options.preserveScrollTop;
       const shouldResetScrollTop = options.resetScrollTop;
+      const shouldRestoreScrollTop = options.restoreScrollTop;
 
       box.innerHTML = "";
 
@@ -2553,8 +2599,10 @@ h1 {
         }
 
         div.onclick = function () {
+          const previousScrollTop = box.scrollTop;
+          categoryScrollTops[getCategoryScrollKey(category)] = previousScrollTop;
           chooseItem(category, item.src, false);
-          renderItems(category, { preserveScrollTop: box.scrollTop });
+          renderItems(category, { preserveScrollTop: previousScrollTop });
         };
 
         box.appendChild(div);
@@ -2575,9 +2623,13 @@ h1 {
       }
 
       if (typeof preserveScrollTop === "number") {
-        box.scrollTop = preserveScrollTop;
+        categoryScrollTops[getCategoryScrollKey(category)] = preserveScrollTop;
+        restoreCategoryScroll(category, preserveScrollTop);
+      } else if (shouldRestoreScrollTop) {
+        restoreCategoryScroll(category);
       } else if (shouldResetScrollTop) {
-        box.scrollTop = 0;
+        categoryScrollTops[getCategoryScrollKey(category)] = 0;
+        restoreCategoryScroll(category, 0);
       }
     }
 
