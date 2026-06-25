@@ -3233,6 +3233,9 @@ h1 {
     const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
     const CHAT_DEVICE_MEMBER_KEY = "qqshow_chat_device_member_id_v2";
     const CHAT_CLEANUP_MEMBER_IDS_KEY = "qqshow_chat_cleanup_member_ids_v1";
+    const CHAT_SAVED_NICKNAME_KEY = "qqshow_chat_saved_nickname_v1";
+    const CHAT_RETURN_REENTER_KEY = "qqshow_chat_return_reenter_v1";
+    const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
 
     const CHAT_ALLOWED_LAYER_IDS = [
       { key: "hair_back", id: "layer-hair-back", z: 25, label: "后发" },
@@ -3340,15 +3343,38 @@ h1 {
       localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify([avatarData]));
     }
 
+    function getSavedChatNickname() {
+      const direct = localStorage.getItem(CHAT_SAVED_NICKNAME_KEY);
+      if (direct && String(direct).trim()) return String(direct).trim().slice(0, 12);
+      try {
+        const raw = localStorage.getItem(CHAT_AVATAR_KEY);
+        const avatar = raw ? JSON.parse(raw) : null;
+        if (avatar && avatar.name && String(avatar.name).trim()) return String(avatar.name).trim().slice(0, 12);
+      } catch (error) {}
+      return "";
+    }
+
     function enterRetroChatRoom() {
-      const inputName = window.prompt("请填写聊天室昵称（必填，最多12字）：", "");
+      const returnedFromCottage = localStorage.getItem(CHAT_RETURN_REENTER_KEY) === "1";
+      const savedNickname = getSavedChatNickname();
+      let name = returnedFromCottage ? savedNickname : "";
 
-      if (inputName === null) return;
+      if (!name) {
+        const inputName = window.prompt("请填写聊天室昵称（必填，最多12字）：", savedNickname || "");
+        if (inputName === null) return;
+        name = String(inputName || "").trim().slice(0, 12);
+      }
 
-      const name = String(inputName || "").trim().slice(0, 12);
       if (!name) {
         alert("进入聊天室前必须填写昵称，不能留空。");
         return;
+      }
+
+      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, name);
+      if (returnedFromCottage) {
+        localStorage.setItem(CHAT_PRESERVE_HISTORY_KEY, "1");
+      } else {
+        localStorage.removeItem(CHAT_PRESERVE_HISTORY_KEY);
       }
 
       const avatarData = buildChatAvatarData(name);

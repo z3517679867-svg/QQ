@@ -1328,6 +1328,66 @@
       }
     }
 
+
+    /* =========================
+       用户发言气泡固定在形象上方：每个用户最多同时显示最近两条
+       ========================= */
+    .bubble-stack {
+      position: absolute !important;
+      left: 50% !important;
+      top: 2px !important;
+      transform: translate(-50%, -100%) !important;
+      width: max-content !important;
+      max-width: 230px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 4px !important;
+      z-index: 40 !important;
+      pointer-events: none !important;
+    }
+
+    .bubble-stack .bubble {
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      transform: none !important;
+      display: block !important;
+      min-width: 96px !important;
+      max-width: 220px !important;
+      padding: 5px 9px !important;
+      margin: 0 !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      overflow-wrap: anywhere !important;
+      animation: bubblePopStack 0.18s ease-out !important;
+    }
+
+    .bubble-stack .bubble:not(:last-child)::after {
+      display: none !important;
+    }
+
+    @keyframes bubblePopStack {
+      from { opacity: 0; transform: translateY(5px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 760px) {
+      .bubble-stack {
+        top: 4px !important;
+        max-width: 190px !important;
+        gap: 3px !important;
+      }
+      .bubble-stack .bubble {
+        min-width: 90px !important;
+        max-width: 180px !important;
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        line-height: 1.32 !important;
+      }
+    }
+
+
   </style>
 </head>
 <body>
@@ -1340,12 +1400,12 @@
     <div class="chat-main">
       <section class="room-wrap">
         <div class="room-toolbar">
-          <span>房间：怀旧换装大厅</span>
-          <span class="hint">多人在线版：点击房间任意位置可移动，别人也能看到</span>
-          <div class="bg-switcher" aria-label="聊天室背景选择">
-            <span class="bg-label">背景</span>
-            <button class="bg-btn" type="button" data-bg="castle" onclick="switchRoomBackground('castle')">城堡花园</button>
-            <button class="bg-btn" type="button" data-bg="shibuya" onclick="switchRoomBackground('shibuya')">涩谷街头</button>
+          <span id="roomTitle">房间：城堡花园</span>
+          <span id="roomCapacity" class="hint">本房间最多 10 人</span>
+          <div class="bg-switcher" aria-label="聊天室房间选择">
+            <span class="bg-label">房间</span>
+            <button class="bg-btn" type="button" data-room="castle" onclick="switchChatRoom('castle')">城堡花园</button>
+            <button class="bg-btn" type="button" data-room="shibuya" onclick="switchChatRoom('shibuya')">涩谷街头</button>
           </div>
         </div>
         <div id="mobileMemberList" class="mobile-member-list" aria-label="手机端在线用户"></div>
@@ -1359,7 +1419,7 @@
         <div class="side-actions">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装小屋</a>
           <button type="button" onclick="clearRoom()">退出聊天室</button>
-          <div class="hint">多人在线 Demo：同一时间进入房间的人会互相看到。</div>
+          <div class="hint">多人在线 Demo：城堡花园、涩谷街头是两个独立房间，每个房间最多 10 人。</div>
         </div>
       </aside>
     </div>
@@ -1382,18 +1442,24 @@
   <script>
     const SUPABASE_URL = "https://jvqcdgbalurasirdgwsz.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1Ufl2198LFxRiTYzwvvp1g_tYJ0-bIJ";
-    const ROOM_ID = "main";
 
     const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
     const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
     const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
     const CHAT_DEVICE_MEMBER_KEY = "qqshow_chat_device_member_id_v2";
     const CHAT_CLEANUP_MEMBER_IDS_KEY = "qqshow_chat_cleanup_member_ids_v1";
-    const CHAT_ROOM_BG_KEY = "qqshow_chat_room_background_v1";
-    const CHAT_ROOM_BACKGROUNDS = {
-      castle: "chat_bg_fixed.png",
-      shibuya: "chat_bg_shibuya.png"
+    const CHAT_ACTIVE_ROOM_KEY = "qqshow_chat_active_room_v2";
+    const CHAT_SAVED_NICKNAME_KEY = "qqshow_chat_saved_nickname_v1";
+    const CHAT_RETURN_REENTER_KEY = "qqshow_chat_return_reenter_v1";
+    const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
+    const CHAT_ROOM_BASELINE_PREFIX = "qqshow_chat_room_baseline_v1_";
+    const CHAT_ROOM_LIMIT = 10;
+    const CHAT_ROOMS = {
+      castle: { id: "castle_garden", name: "城堡花园", bg: "chat_bg_fixed.png" },
+      shibuya: { id: "shibuya_street", name: "涩谷街头", bg: "chat_bg_shibuya.png" }
     };
+    let currentRoomKey = getSavedRoomKey();
+    let currentRoomId = CHAT_ROOMS[currentRoomKey].id;
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       realtime: {
@@ -1416,13 +1482,12 @@
       { left: 62, top: 94 }
     ];
 
-    const fallbackMembers = [
-      { id: "npc_1", name: "系统企鹅", layers: [], npc: true, pos: { left: 18, top: 86 } },
-      { id: "npc_2", name: "泡泡糖", layers: [], npc: true, pos: { left: 77, top: 86 } }
-    ];
+    // 不再显示系统默认角色；房间里只显示真实进入聊天室的用户。
+    const fallbackMembers = [];
 
     let membersCache = [];
     let messagesCache = [];
+    const activeBubblesByMember = {};
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
     let dragPositionState = null;
     let suppressNextStageClick = false;
@@ -1430,36 +1495,130 @@
     let positionUpdateTimer = null;
     let realtimeReady = false;
     let lastLoadedMessageId = 0;
+    // 每次进入/切换房间时记录当前房间已有的最大消息 ID；新进来的用户只看此后的消息。
+    let roomEntryBaselineMessageId = 0;
+    // 从“返回换装/返回换装小屋”回来时复用上次进房间的消息基准，保留那次会话里的历史。
+    let preserveHistoryReentry = localStorage.getItem(CHAT_PRESERVE_HISTORY_KEY) === "1";
     let systemToastTimer = null;
 
-    function getSavedRoomBackground() {
-      const saved = localStorage.getItem(CHAT_ROOM_BG_KEY);
-      return CHAT_ROOM_BACKGROUNDS[saved] ? saved : "castle";
+    function getSavedRoomKey() {
+      const saved = localStorage.getItem(CHAT_ACTIVE_ROOM_KEY);
+      return CHAT_ROOMS[saved] ? saved : "castle";
     }
 
-    function applyRoomBackground(bgKey) {
-      const key = CHAT_ROOM_BACKGROUNDS[bgKey] ? bgKey : "castle";
-      const stage = document.getElementById("roomStage");
-      if (stage) {
-        stage.style.setProperty("--chat-room-bg", 'url("' + CHAT_ROOM_BACKGROUNDS[key] + '")');
+    function getCurrentRoomConfig() {
+      return CHAT_ROOMS[currentRoomKey] || CHAT_ROOMS.castle;
+    }
+
+    function getRoomBaselineStorageKey(roomId) {
+      return CHAT_ROOM_BASELINE_PREFIX + (roomId || currentRoomId || "main");
+    }
+
+    function readSavedRoomBaseline(roomId) {
+      const raw = localStorage.getItem(getRoomBaselineStorageKey(roomId));
+      const value = Number(raw);
+      return Number.isFinite(value) && value >= 0 ? value : null;
+    }
+
+    function saveRoomBaseline(roomId, baseline) {
+      const value = Number(baseline);
+      if (!Number.isFinite(value) || value < 0) return;
+      localStorage.setItem(getRoomBaselineStorageKey(roomId), String(Math.floor(value)));
+    }
+
+    function rememberReturnToCottageSession() {
+      localStorage.setItem(CHAT_RETURN_REENTER_KEY, "1");
+      localStorage.setItem(CHAT_PRESERVE_HISTORY_KEY, "1");
+      localStorage.setItem(CHAT_ACTIVE_ROOM_KEY, currentRoomKey);
+      const current = membersCache.find(member => member.id === currentMemberId);
+      if (current && current.name) {
+        localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, current.name);
+      } else {
+        const avatar = readJSON(CHAT_AVATAR_KEY, null);
+        if (avatar && avatar.name) localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, avatar.name);
       }
+      if (roomEntryBaselineMessageId >= 0) saveRoomBaseline(currentRoomId, roomEntryBaselineMessageId);
+    }
+
+    function applyChatRoom(roomKey) {
+      const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
+      const config = CHAT_ROOMS[key];
+      currentRoomKey = key;
+      currentRoomId = config.id;
+      localStorage.setItem(CHAT_ACTIVE_ROOM_KEY, key);
+
+      const stage = document.getElementById("roomStage");
+      if (stage) stage.style.setProperty("--chat-room-bg", 'url("' + config.bg + '")');
+
+      const title = document.getElementById("roomTitle");
+      if (title) title.innerText = "房间：" + config.name;
 
       document.querySelectorAll(".bg-btn").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-bg") === key);
+        btn.classList.toggle("active", btn.getAttribute("data-room") === key);
       });
+      updateRoomCapacityText();
     }
 
-    async function switchRoomBackground(bgKey) {
-      const key = CHAT_ROOM_BACKGROUNDS[bgKey] ? bgKey : "castle";
-      localStorage.setItem(CHAT_ROOM_BG_KEY, key);
-      applyRoomBackground(key);
+    function updateRoomCapacityText() {
+      const cap = document.getElementById("roomCapacity");
+      if (!cap) return;
+      const count = membersCache.filter(member => !member.npc).length;
+      cap.innerText = "本房间在线 " + count + "/" + CHAT_ROOM_LIMIT + " 人";
+    }
+
+    async function getRoomActiveMemberCount(roomId, excludeId) {
+      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      let query = supabaseClient
+        .from("room_members")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", roomId)
+        .gte("last_seen", since);
+      if (excludeId) query = query.neq("id", excludeId);
+      const { count, error } = await query;
+      if (error) {
+        console.warn("读取房间人数失败", error);
+        return 0;
+      }
+      return count || 0;
+    }
+
+    async function canEnterRoom(roomKey, options) {
+      const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
+      const config = CHAT_ROOMS[key];
+      const opts = options || {};
+      const count = await getRoomActiveMemberCount(config.id, currentMemberId || localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || "");
+      if (count >= CHAT_ROOM_LIMIT) {
+        if (!opts.silent) alert(config.name + "房间已满，最多只能进入 " + CHAT_ROOM_LIMIT + " 人。请稍后再试，或切换到另一个房间。");
+        return false;
+      }
+      return true;
+    }
+
+    async function switchChatRoom(roomKey) {
+      const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
+      if (key === currentRoomKey) return;
+      const oldConfig = getCurrentRoomConfig();
+      const newConfig = CHAT_ROOMS[key];
+      const oldMember = membersCache.find(member => member.id === currentMemberId);
+      const oldName = oldMember && oldMember.name ? oldMember.name : "用户";
+
+      const ok = await canEnterRoom(key);
+      if (!ok) return;
 
       if (currentMemberId) {
-        await supabaseClient
-          .from("room_members")
-          .update({ background_key: key, last_seen: new Date().toISOString() })
-          .eq("id", currentMemberId);
+        await sendSystemMessage(oldName + " 已退出" + oldConfig.name + "。", false);
       }
+
+      membersCache = [];
+      messagesCache = [];
+      Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
+      applyChatRoom(key);
+      renderRoom();
+      renderMessages();
+      await resetRoomHistoryBaseline();
+      await joinRoom({ roomSwitch: true });
+      await loadMessages();
+      await loadMembers();
     }
 
     function clampStagePosition(pos) {
@@ -1570,7 +1729,7 @@
     function getMembers() {
       if (membersCache.length) return membersCache;
       const lastAvatar = readJSON(CHAT_AVATAR_KEY, null);
-      if (lastAvatar && Array.isArray(lastAvatar.layers)) return [lastAvatar].concat(fallbackMembers);
+      if (lastAvatar && Array.isArray(lastAvatar.layers)) return [lastAvatar];
       return fallbackMembers;
     }
 
@@ -1582,7 +1741,8 @@
         return saved;
       }
       const firstReal = members.find(member => !member.npc);
-      return firstReal ? firstReal.id : members[0].id;
+      if (firstReal) return firstReal.id;
+      return members[0] ? members[0].id : "";
     }
 
     function getMemberPosition(member, index) {
@@ -1626,6 +1786,13 @@
       list.innerHTML = "";
       if (mobileList) mobileList.innerHTML = "";
 
+      updateRoomCapacityText();
+
+      if (!members.length) {
+        list.innerHTML = `<div class="member-row"><span class="member-dot"></span><span>暂无在线用户</span></div>`;
+        return;
+      }
+
       members.forEach((member, index) => {
         const pos = getMemberPosition(member, index);
         const memberEl = document.createElement("div");
@@ -1642,10 +1809,10 @@
           });
         }
 
-        const bubble = document.createElement("div");
-        bubble.className = "bubble";
-        bubble.setAttribute("data-bubble", member.id);
-        memberEl.appendChild(bubble);
+        const bubbleStack = document.createElement("div");
+        bubbleStack.className = "bubble-stack";
+        bubbleStack.setAttribute("data-bubbles", member.id);
+        memberEl.appendChild(bubbleStack);
         memberEl.appendChild(createAvatarElement(member));
 
         const nameTag = document.createElement("div");
@@ -1653,6 +1820,7 @@
         nameTag.innerText = member.name || "匿名小人";
         memberEl.appendChild(nameTag);
         stage.appendChild(memberEl);
+        renderMemberBubbles(member.id);
 
         const row = document.createElement("div");
         row.className = "member-row";
@@ -1689,17 +1857,24 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    function renderMemberBubbles(memberId) {
+      if (!memberId) return;
+      const stack = document.querySelector(`[data-bubbles="${CSS.escape(memberId)}"]`);
+      if (!stack) return;
+      const bubbles = (activeBubblesByMember[memberId] || []).slice(-2);
+      stack.innerHTML = bubbles.map(text => {
+        return `<div class="bubble show">${escapeHTML(text)}</div>`;
+      }).join("");
+    }
+
     function showBubble(memberId, text) {
-      document.querySelectorAll(".bubble").forEach(el => {
-        el.classList.remove("show");
-        el.innerText = "";
-      });
-      const bubble = document.querySelector(`[data-bubble="${CSS.escape(memberId)}"]`);
-      if (!bubble) return;
-      bubble.innerText = text;
-      bubble.classList.add("show");
-      clearTimeout(showBubble.timer);
-      showBubble.timer = setTimeout(() => bubble.classList.remove("show"), 5200);
+      if (!memberId) return;
+      const cleanText = String(text || "").trim().slice(0, 80);
+      if (!cleanText) return;
+      const current = activeBubblesByMember[memberId] || [];
+      current.push(cleanText);
+      activeBubblesByMember[memberId] = current.slice(-2);
+      renderMemberBubbles(memberId);
     }
 
     function showLatestBubble() {
@@ -1713,10 +1888,10 @@
       const { data, error } = await supabaseClient
         .from("room_members")
         .select("id, room_id, nickname, avatar, x, y, background_key, last_seen, created_at")
-        .eq("room_id", ROOM_ID)
+        .eq("room_id", currentRoomId)
         .gte("last_seen", since)
         .order("created_at", { ascending: true })
-        .limit(30);
+        .limit(CHAT_ROOM_LIMIT);
 
       if (error) {
         console.error("读取在线用户失败", error);
@@ -1728,13 +1903,50 @@
       renderRoom();
     }
 
+    async function resetRoomHistoryBaseline(options) {
+      const opts = options || {};
+      const savedBaseline = opts.preserve ? readSavedRoomBaseline(currentRoomId) : null;
+
+      if (savedBaseline !== null) {
+        roomEntryBaselineMessageId = savedBaseline;
+      } else {
+        const { data, error } = await supabaseClient
+          .from("chat_messages")
+          .select("id")
+          .eq("room_id", currentRoomId)
+          .order("id", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          console.warn("读取房间消息基准失败，将按空历史进入", error);
+          roomEntryBaselineMessageId = lastLoadedMessageId || 0;
+        } else {
+          const latest = data && data[0] ? Number(data[0].id) : 0;
+          roomEntryBaselineMessageId = Number.isFinite(latest) ? latest : 0;
+        }
+        saveRoomBaseline(currentRoomId, roomEntryBaselineMessageId);
+      }
+
+      lastLoadedMessageId = roomEntryBaselineMessageId;
+      messagesCache = [];
+      Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
+      updateSystemLine(opts.preserve ? "已返回聊天室，保留离开前的聊天记录。" : "欢迎进入多人怀旧换装大厅。");
+      renderMessages();
+    }
+
     async function loadMessages() {
-      const { data, error } = await supabaseClient
+      let query = supabaseClient
         .from("chat_messages")
         .select("id, member_id, nickname, content, created_at")
-        .eq("room_id", ROOM_ID)
+        .eq("room_id", currentRoomId)
         .order("created_at", { ascending: false })
         .limit(80);
+
+      if (roomEntryBaselineMessageId > 0) {
+        query = query.gt("id", roomEntryBaselineMessageId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("读取消息失败", error);
@@ -1745,7 +1957,7 @@
       lastLoadedMessageId = messagesCache.reduce((max, item) => {
         const id = Number(item.id);
         return Number.isFinite(id) && id > max ? id : max;
-      }, lastLoadedMessageId);
+      }, roomEntryBaselineMessageId || lastLoadedMessageId);
       renderMessages();
     }
 
@@ -1806,7 +2018,8 @@
       return avatar;
     }
 
-    async function joinRoom() {
+    async function joinRoom(options) {
+      const joinOptions = options || {};
       const avatar = getLocalAvatarForJoin();
       if (!avatar) {
         setStatus("请先返回小屋设计形象，再进入聊天室");
@@ -1818,12 +2031,27 @@
       localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, currentMemberId);
       localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, currentMemberId);
       await cleanupOldMemberRows(currentMemberId);
+
+      const canEnter = await canEnterRoom(currentRoomKey, { silent: joinOptions.roomSwitch });
+      if (!canEnter) {
+        const fallbackKey = currentRoomKey === "castle" ? "shibuya" : "castle";
+        const fallbackOk = await canEnterRoom(fallbackKey, { silent: true });
+        if (fallbackOk) {
+          alert(getCurrentRoomConfig().name + "房间已满，已为你切换到" + CHAT_ROOMS[fallbackKey].name + "。每个房间最多 10 人。");
+          applyChatRoom(fallbackKey);
+        } else {
+          alert("两个房间都已满，每个房间最多 10 人。请稍后再试。");
+          setStatus("当前房间已满");
+          return;
+        }
+      }
+
       const existingPos = avatar.pos || stagePositions[Math.floor(Math.random() * stagePositions.length)];
       const pos = clampStagePosition(existingPos);
 
       const payload = {
         id: currentMemberId,
-        room_id: ROOM_ID,
+        room_id: currentRoomId,
         nickname: String(avatar.name || "").trim().slice(0, 12),
         avatar: {
           id: avatar.id,
@@ -1833,7 +2061,7 @@
         },
         x: pos.left,
         y: pos.top,
-        background_key: getSavedRoomBackground(),
+        background_key: currentRoomKey,
         last_seen: new Date().toISOString()
       };
 
@@ -1848,7 +2076,15 @@
       }
 
       await loadMembers();
-      await sendSystemMessage("欢迎 " + payload.nickname + " 进入聊天室。", false);
+      if (preserveHistoryReentry) {
+        showSystemToast(payload.nickname + " 已返回" + getCurrentRoomConfig().name + "，继续上次聊天。");
+      } else {
+        await sendSystemMessage("欢迎 " + payload.nickname + " 进入" + getCurrentRoomConfig().name + "。", false);
+      }
+      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, payload.nickname);
+      localStorage.removeItem(CHAT_RETURN_REENTER_KEY);
+      localStorage.removeItem(CHAT_PRESERVE_HISTORY_KEY);
+      preserveHistoryReentry = false;
     }
 
     async function heartbeat() {
@@ -1986,7 +2222,7 @@
       const { error } = await supabaseClient
         .from("chat_messages")
         .insert({
-          room_id: ROOM_ID,
+          room_id: currentRoomId,
           member_id: null,
           nickname: "系统",
           content: cleanText
@@ -2017,7 +2253,7 @@
       const { error } = await supabaseClient
         .from("chat_messages")
         .insert({
-          room_id: ROOM_ID,
+          room_id: currentRoomId,
           member_id: currentMember.id,
           nickname: currentMember.name || "匿名小人",
           content: text
@@ -2033,7 +2269,7 @@
       if (!confirm("确定退出多人聊天室吗？你的角色会从当前房间移除。")) return;
       const current = membersCache.find(member => member.id === currentMemberId);
       const nickname = current && current.name ? current.name : "用户";
-      await sendSystemMessage(nickname + " 已退出聊天室。", false);
+      await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", false);
       if (currentMemberId) {
         await supabaseClient.from("room_members").delete().eq("id", currentMemberId);
       }
@@ -2044,6 +2280,7 @@
 
     function goBackToCottage(event) {
       if (event && event.preventDefault) event.preventDefault();
+      rememberReturnToCottageSession();
       try {
         const ref = document.referrer || "";
         if (ref) {
@@ -2065,13 +2302,16 @@
       realtimeReady = true;
 
       supabaseClient
-        .channel("retro-chatroom-main")
-        .on("postgres_changes", { event: "*", schema: "public", table: "room_members", filter: "room_id=eq." + ROOM_ID }, async () => {
+        .channel("retro-chatroom-rooms")
+        .on("postgres_changes", { event: "*", schema: "public", table: "room_members" }, async () => {
           await loadMembers();
         })
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: "room_id=eq." + ROOM_ID }, payload => {
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, payload => {
+          if (!payload.new || payload.new.room_id !== currentRoomId) return;
           const row = payload.new;
           const message = normalizeMessageRow(row);
+          const messageIdNumber = Number(message.id);
+          if (Number.isFinite(messageIdNumber) && messageIdNumber <= roomEntryBaselineMessageId) return;
           const isNewAfterInitialLoad = Number(message.id) > lastLoadedMessageId;
           if (appendMessage(message)) {
             const numericId = Number(message.id);
@@ -2090,13 +2330,14 @@
     }
 
     async function initOnlineChat() {
-      applyRoomBackground(getSavedRoomBackground());
+      applyChatRoom(currentRoomKey);
       setupStagePositionClick();
       renderRoom();
       renderMessages();
-      await loadMessages();
+      await resetRoomHistoryBaseline({ preserve: preserveHistoryReentry });
       setupRealtime();
       await joinRoom();
+      await loadMessages();
       await loadMembers();
       setInterval(heartbeat, 25000);
       setInterval(loadMembers, 30000);
