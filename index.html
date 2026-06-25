@@ -2005,6 +2005,30 @@ h1 {
       return list;
     }
 
+
+
+    function getDisplayCategoryList(category) {
+      const list = getCategoryList(category);
+
+      /*
+        素材显示顺序：
+        - “不使用”和 default 默认项保持在最前，方便恢复空白/默认状态；
+        - 其余真实素材倒序显示，让最新加入 items.js 末尾的素材优先出现在上方。
+      */
+      const pinnedItems = [];
+      const realItems = [];
+
+      list.forEach(item => {
+        if (!item || !item.src || isDefaultItem(item)) {
+          pinnedItems.push(item);
+        } else {
+          realItems.push(item);
+        }
+      });
+
+      return pinnedItems.concat(realItems.slice().reverse());
+    }
+
     function isDefaultItem(item) {
       if (!item || !item.src) return false;
 
@@ -2502,7 +2526,7 @@ h1 {
       box.innerHTML = "";
 
       const realCategory = getRealCategory(category);
-      const list = getCategoryList(category);
+      const list = getDisplayCategoryList(category);
       const selectedSrc = getState(category);
       const selectedFaceList = category === "face" ? getFaceList() : [];
 

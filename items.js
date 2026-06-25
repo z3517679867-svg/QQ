@@ -3104,6 +3104,18 @@ window.ITEMS = {
     {
       "name": "冰沙旗袍",
       "src": "assets/clothes_f/cloth_427.gif"
+    },
+    {
+      "name": "风铃乐队",
+      "src": "assets/clothes_f/cloth_428.gif"
+    },
+    {
+      "name": "海盐睡衣",
+      "src": "assets/clothes_f/cloth_429.gif"
+    },
+    {
+      "name": "唱片学院",
+      "src": "assets/clothes_f/cloth_430.gif"
     }
   ],
   "clothes_m": [
@@ -6466,6 +6478,10 @@ window.ITEMS = {
     {
       "name": "幻糖帽子",
       "src": "assets/hat/hat_122.gif"
+    },
+    {
+      "name": "万花头饰",
+      "src": "assets/hat/hat_123.gif"
     }
   ],
   "glasses": [
