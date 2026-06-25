@@ -1550,6 +1550,46 @@ h1 {
       }
     }
 
+  
+
+    /* =========================
+       复古聊天室入口按钮
+       只新增入口，不改原有换装功能
+       ========================= */
+    .chat-btn {
+      border: 1px solid #4faed5 !important;
+      border-radius: 4px !important;
+      padding: 5px 8px !important;
+      color: #06466b !important;
+      font-size: 12px !important;
+      font-weight: 700;
+      line-height: 1.15 !important;
+      min-height: 26px;
+      white-space: nowrap;
+      cursor: pointer;
+      background: linear-gradient(180deg, #ffffff 0%, #d7ffe5 48%, #9af2bc 49%, #e9fff1 100%) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        0 2px 4px rgba(0,90,140,0.18) !important;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .chat-btn:hover {
+      background: linear-gradient(180deg, #ffffff 0%, #ffe99d 48%, #ffd953 49%, #fff4bc 100%) !important;
+      border-color: #e2a600 !important;
+      color: #7c4b00 !important;
+    }
+
+    @media (max-width: 760px) {
+      .chat-btn {
+        padding: 4px 6px !important;
+        font-size: 10.5px !important;
+        line-height: 1.1 !important;
+        min-height: 24px !important;
+        border-radius: 4px !important;
+      }
+    }
+
   </style>
 
   <!-- Google Analytics 4 统计代码
@@ -1607,6 +1647,7 @@ h1 {
           <button class="random-btn" onclick="randomAllItems()">美观随机</button>
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
+          <button class="chat-btn" onclick="enterRetroChatRoom()">进入聊天室</button>
           <button class="notice-btn" onclick="openNotice()">声明</button>
         </div>
       </div>
@@ -1808,7 +1849,6 @@ h1 {
     const OLD_STORAGE_KEY = "qqshow_avatar_state_v4";
     const HISTORY_LIMIT = 50;
     const visibleCounts = {};
-    const categoryScrollTops = {};
     const undoStack = [];
     const redoStack = [];
     let autoLoadTimer = null;
@@ -2016,42 +2056,6 @@ h1 {
       visibleCounts[realCategory] = value;
     }
 
-    function getCategoryScrollKey(category) {
-      return getRealCategory(category);
-    }
-
-    function rememberCategoryScroll(category) {
-      const box = document.getElementById("items");
-      if (!box || !category) return;
-
-      categoryScrollTops[getCategoryScrollKey(category)] = box.scrollTop || 0;
-    }
-
-    function getRememberedCategoryScroll(category) {
-      const key = getCategoryScrollKey(category);
-      return typeof categoryScrollTops[key] === "number" ? categoryScrollTops[key] : 0;
-    }
-
-    function restoreCategoryScroll(category, fallbackTop) {
-      const box = document.getElementById("items");
-      if (!box) return;
-
-      const targetTop = typeof fallbackTop === "number"
-        ? fallbackTop
-        : getRememberedCategoryScroll(category);
-
-      requestAnimationFrame(function () {
-        box.scrollTop = targetTop || 0;
-
-        /*
-          部分手机浏览器首次布局会晚一帧，第二次设置能避免回弹到顶部。
-        */
-        setTimeout(function () {
-          box.scrollTop = targetTop || 0;
-        }, 0);
-      });
-    }
-
     function getBatchSize() {
       return window.innerWidth <= 760 ? 30 : 60;
     }
@@ -2068,8 +2072,6 @@ h1 {
       if (!box) return;
 
       box.addEventListener("scroll", function () {
-        rememberCategoryScroll(currentCategory);
-
         if (autoLoadTimer) return;
 
         autoLoadTimer = setTimeout(function () {
@@ -2084,7 +2086,6 @@ h1 {
 
           if (distanceToBottom < 360) {
             const previousScrollTop = box.scrollTop;
-            categoryScrollTops[getCategoryScrollKey(currentCategory)] = previousScrollTop;
             increaseVisibleCount(currentCategory);
             renderItems(currentCategory, { preserveScrollTop: previousScrollTop });
           }
@@ -2318,14 +2319,13 @@ h1 {
 
     function switchGender(gender) {
       pushHistorySnapshot();
-      rememberCategoryScroll(currentCategory);
 
       currentGender = gender;
 
       ensureGenderDefaults(gender);
       applyAllLayers();
       updateClothesVisibility();
-      renderItems(currentCategory, { restoreScrollTop: true });
+      renderItems(currentCategory, { resetScrollTop: true });
       updateGenderStatus();
       updateTabStatus();
       saveAvatarState();
@@ -2350,12 +2350,8 @@ h1 {
             gender: currentGender
           });
 
-          if (currentCategory !== category) {
-            rememberCategoryScroll(currentCategory);
-          }
-
           currentCategory = category;
-          renderItems(category, { restoreScrollTop: true });
+          renderItems(category, { resetScrollTop: true });
           updateTabStatus();
         };
 
@@ -2502,7 +2498,6 @@ h1 {
 
       const preserveScrollTop = options.preserveScrollTop;
       const shouldResetScrollTop = options.resetScrollTop;
-      const shouldRestoreScrollTop = options.restoreScrollTop;
 
       box.innerHTML = "";
 
@@ -2599,10 +2594,8 @@ h1 {
         }
 
         div.onclick = function () {
-          const previousScrollTop = box.scrollTop;
-          categoryScrollTops[getCategoryScrollKey(category)] = previousScrollTop;
           chooseItem(category, item.src, false);
-          renderItems(category, { preserveScrollTop: previousScrollTop });
+          renderItems(category, { preserveScrollTop: box.scrollTop });
         };
 
         box.appendChild(div);
@@ -2623,13 +2616,9 @@ h1 {
       }
 
       if (typeof preserveScrollTop === "number") {
-        categoryScrollTops[getCategoryScrollKey(category)] = preserveScrollTop;
-        restoreCategoryScroll(category, preserveScrollTop);
-      } else if (shouldRestoreScrollTop) {
-        restoreCategoryScroll(category);
+        box.scrollTop = preserveScrollTop;
       } else if (shouldResetScrollTop) {
-        categoryScrollTops[getCategoryScrollKey(category)] = 0;
-        restoreCategoryScroll(category, 0);
+        box.scrollTop = 0;
       }
     }
 
@@ -3230,6 +3219,116 @@ h1 {
         closeNotice();
       }
     });
+
+
+
+    /* =========================
+       复古聊天室多人在线版：
+       进入聊天室时只带入指定形象图层：
+       整套衣服 / 上衣+下装、身体、颈饰品、头发、帽子、眼镜、耳饰、脸饰品。
+       背景、前景、翅膀、手持物、特效、陪伴、文字、相框不会进入聊天室。
+       ========================= */
+    const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
+    const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
+    const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
+
+    const CHAT_ALLOWED_LAYER_IDS = [
+      { key: "hair_back", id: "layer-hair-back", z: 25, label: "后发" },
+      { key: "clothes", id: "layer-clothes", z: 30, label: "整套衣服" },
+      { key: "bottom", id: "layer-bottom", z: 31, label: "下装" },
+      { key: "top", id: "layer-top", z: 32, label: "上衣" },
+      { key: "body", id: "layer-body", z: 40, label: "身体" },
+      { key: "neck", id: "layer-neck", z: 50, label: "颈饰品" },
+      { key: "hair", id: "layer-hair", z: 60, label: "前发" },
+      { key: "hat", id: "layer-hat", z: 70, label: "帽子" },
+      { key: "glasses", id: "layer-glasses", z: 80, label: "眼镜" },
+      { key: "earring", id: "layer-earring", z: 90, label: "耳饰" },
+      { key: "face", id: "layer-face", z: 100, label: "脸饰品1" },
+      { key: "face_2", id: "layer-face-2", z: 101, label: "脸饰品2" },
+      { key: "face_3", id: "layer-face-3", z: 102, label: "脸饰品3" }
+    ];
+
+    function getChatLayerSrc(layerId) {
+      const img = document.getElementById(layerId);
+      if (!img) return "";
+
+      const computed = window.getComputedStyle(img);
+      if (computed.display === "none" || computed.visibility === "hidden" || computed.opacity === "0") {
+        return "";
+      }
+
+      const src = img.currentSrc || img.getAttribute("src") || img.src || "";
+      if (!src || src.indexOf("data:,") >= 0) return "";
+
+      return src;
+    }
+
+    function buildChatAvatarData(name) {
+      const layers = CHAT_ALLOWED_LAYER_IDS.map(layer => {
+        return {
+          key: layer.key,
+          id: layer.id,
+          z: layer.z,
+          label: layer.label,
+          src: getChatLayerSrc(layer.id)
+        };
+      }).filter(layer => !!layer.src);
+
+      return {
+        id: "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+        name: name || "匿名小人",
+        gender: currentGender,
+        createdAt: Date.now(),
+        layers: layers
+      };
+    }
+
+    function readChatMembers() {
+      try {
+        const raw = localStorage.getItem(CHAT_MEMBERS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveChatMember(avatarData) {
+      const members = readChatMembers();
+      members.push(avatarData);
+
+      /* 多人在线聊天室：本地只保存当前进入房间的形象，在线显示由 Supabase 同步。 */
+      const limited = members.slice(-12);
+
+      localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatarData));
+      localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, avatarData.id);
+      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify(limited));
+    }
+
+    function enterRetroChatRoom() {
+      const defaultName = currentGender === "m" ? "蓝色企鹅" : "糖果泡泡";
+      const inputName = window.prompt("给这个形象取个聊天室昵称：", defaultName);
+
+      if (inputName === null) return;
+
+      const name = (inputName || defaultName).trim().slice(0, 12) || defaultName;
+      const avatarData = buildChatAvatarData(name);
+
+      if (!avatarData.layers || avatarData.layers.length === 0) {
+        alert("当前形象没有可进入聊天室的图层，请至少选择身体或衣服素材。");
+        return;
+      }
+
+      saveChatMember(avatarData);
+
+      trackGAEvent("enter_retro_chat", {
+        gender: currentGender,
+        layer_count: avatarData.layers.length
+      });
+
+      window.location.href = "chat.html";
+    }
+
 
     init();
   </script>
