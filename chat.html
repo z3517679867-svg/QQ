@@ -769,6 +769,134 @@
       }
     }
 
+
+    /* =========================
+       多人聊天室修正版：坐标脚下锚点 + 手机在线用户 + 手机退出按钮 + 系统弹窗
+       ========================= */
+    .member {
+      transform: translate(-50%, -100%) !important;
+      width: 178px !important;
+      height: 286px !important;
+    }
+
+    .member .name-tag {
+      top: 250px !important;
+      bottom: auto !important;
+    }
+
+    .mobile-member-list {
+      display: none;
+    }
+
+    .mobile-exit-btn {
+      display: none;
+    }
+
+    .system-toast {
+      position: absolute;
+      left: 50%;
+      top: 54px;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 80;
+      max-width: min(82%, 520px);
+      padding: 8px 14px;
+      border: 1px solid #e6b800;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #fffbe2, #ffe98a);
+      color: #6a4a00;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(120, 80, 0, 0.18);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .system-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 760px) {
+      .chat-main {
+        grid-template-rows: minmax(0, 1fr) 150px !important;
+      }
+
+      .room-wrap {
+        min-height: 0;
+      }
+
+      .mobile-member-list {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+        min-height: 34px;
+        padding: 5px 7px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-bottom: 1px solid #b6d9ec;
+        background: rgba(247, 252, 255, 0.92);
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .mobile-member-list::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mobile-member-chip {
+        flex: 0 0 auto;
+        max-width: 96px;
+        padding: 3px 8px;
+        border: 1px solid #7bc5e5;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #ffffff, #d9f4ff);
+        color: #075984;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .mobile-member-chip.me {
+        border-color: #e6b800;
+        background: linear-gradient(180deg, #fff8c7, #ffe171);
+        color: #5f3a00;
+      }
+
+      .member {
+        transform: translate(-50%, -100%) !important;
+        width: 150px !important;
+        height: 244px !important;
+      }
+
+      .member .name-tag {
+        top: 208px !important;
+        bottom: auto !important;
+      }
+
+      .mobile-exit-btn {
+        display: inline-block;
+      }
+
+      .message-panel {
+        flex-basis: 150px !important;
+      }
+
+      .button-row {
+        justify-content: space-between;
+      }
+
+      .system-toast {
+        top: 76px;
+        max-width: 92%;
+        padding: 7px 11px;
+        font-size: 12px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -789,7 +917,9 @@
             <button class="bg-btn" type="button" data-bg="shibuya" onclick="switchRoomBackground('shibuya')">涩谷街头</button>
           </div>
         </div>
+        <div id="mobileMemberList" class="mobile-member-list" aria-label="手机端在线用户"></div>
         <div id="roomStage" class="room-stage"></div>
+        <div id="systemToast" class="system-toast" aria-live="polite"></div>
       </section>
 
       <aside class="side-panel">
@@ -809,6 +939,7 @@
         <textarea id="messageInput" maxlength="80" placeholder="输入一句话，所有在线用户都会看到。按 Enter 发送，Shift+Enter 换行。"></textarea>
         <div class="button-row">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装</a>
+          <button type="button" class="mobile-exit-btn" onclick="clearRoom()">退出聊天室</button>
           <button type="button" onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -839,23 +970,23 @@
     });
 
     const stagePositions = [
-      { left: 18, top: 68 },
-      { left: 36, top: 55 },
-      { left: 55, top: 70 },
-      { left: 75, top: 57 },
-      { left: 24, top: 38 },
-      { left: 47, top: 39 },
-      { left: 68, top: 38 },
-      { left: 86, top: 72 },
-      { left: 10, top: 48 },
-      { left: 90, top: 45 },
-      { left: 42, top: 80 },
-      { left: 62, top: 82 }
+      { left: 18, top: 88 },
+      { left: 36, top: 80 },
+      { left: 55, top: 91 },
+      { left: 75, top: 83 },
+      { left: 24, top: 65 },
+      { left: 47, top: 67 },
+      { left: 68, top: 66 },
+      { left: 86, top: 91 },
+      { left: 10, top: 78 },
+      { left: 90, top: 74 },
+      { left: 42, top: 94 },
+      { left: 62, top: 94 }
     ];
 
     const fallbackMembers = [
-      { id: "npc_1", name: "系统企鹅", layers: [], npc: true, pos: { left: 18, top: 66 } },
-      { id: "npc_2", name: "泡泡糖", layers: [], npc: true, pos: { left: 77, top: 65 } }
+      { id: "npc_1", name: "系统企鹅", layers: [], npc: true, pos: { left: 18, top: 86 } },
+      { id: "npc_2", name: "泡泡糖", layers: [], npc: true, pos: { left: 77, top: 86 } }
     ];
 
     let membersCache = [];
@@ -866,6 +997,8 @@
     let lastPositionUpdateAt = 0;
     let positionUpdateTimer = null;
     let realtimeReady = false;
+    let lastLoadedMessageId = 0;
+    let systemToastTimer = null;
 
     function getSavedRoomBackground() {
       const saved = localStorage.getItem(CHAT_ROOM_BG_KEY);
@@ -901,8 +1034,8 @@
       const left = Number(pos && pos.left);
       const top = Number(pos && pos.top);
       return {
-        left: Math.max(6, Math.min(94, Number.isFinite(left) ? left : 50)),
-        top: Math.max(30, Math.min(88, Number.isFinite(top) ? top : 68))
+        left: Math.max(5, Math.min(95, Number.isFinite(left) ? left : 50)),
+        top: Math.max(52, Math.min(96, Number.isFinite(top) ? top : 86))
       };
     }
 
@@ -935,6 +1068,43 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+
+    function isSystemMessage(message) {
+      if (!message) return false;
+      return message.type === "system" || !message.memberId || message.name === "系统";
+    }
+
+    function normalizeMessageRow(row) {
+      const system = !row.member_id || row.nickname === "系统";
+      return {
+        id: row.id,
+        type: system ? "system" : "chat",
+        memberId: row.member_id,
+        name: row.nickname || (system ? "系统" : "匿名小人"),
+        text: row.content || "",
+        createdAt: row.created_at
+      };
+    }
+
+    function appendMessage(message) {
+      if (!message) return false;
+      if (message.id && messagesCache.some(item => String(item.id) === String(message.id))) return false;
+      messagesCache.push(message);
+      messagesCache = messagesCache.slice(-80);
+      return true;
+    }
+
+    function showSystemToast(text) {
+      const toast = document.getElementById("systemToast");
+      if (!toast || !text) return;
+      toast.innerText = text;
+      toast.classList.add("show");
+      clearTimeout(systemToastTimer);
+      systemToastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 3600);
     }
 
     function setStatus(text) {
@@ -1010,12 +1180,14 @@
     function renderRoom() {
       const stage = document.getElementById("roomStage");
       const list = document.getElementById("memberList");
+      const mobileList = document.getElementById("mobileMemberList");
       if (!stage || !list) return;
 
       const members = getMembers();
       const currentId = getCurrentMemberId(members);
       stage.innerHTML = "";
       list.innerHTML = "";
+      if (mobileList) mobileList.innerHTML = "";
 
       members.forEach((member, index) => {
         const pos = getMemberPosition(member, index);
@@ -1049,6 +1221,13 @@
         row.className = "member-row";
         row.innerHTML = `<span class="member-dot"></span><span>${escapeHTML(member.name || "匿名小人")}${member.id === currentId ? "（我）" : ""}</span>`;
         list.appendChild(row);
+
+        if (mobileList && index < 8) {
+          const chip = document.createElement("div");
+          chip.className = "mobile-member-chip" + (member.id === currentId ? " me" : "");
+          chip.innerText = (member.name || "匿名小人") + (member.id === currentId ? "（我）" : "");
+          mobileList.appendChild(chip);
+        }
       });
     }
 
@@ -1061,7 +1240,7 @@
         return;
       }
       log.innerHTML = messages.map(message => {
-        if (message.type === "system") return `<div class="log-line system">系统提示：${escapeHTML(message.text)}</div>`;
+        if (isSystemMessage(message)) return `<div class="log-line system">系统提示：${escapeHTML(message.text)}</div>`;
         return `<div class="log-line"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</div>`;
       }).join("");
       log.scrollTop = log.scrollHeight;
@@ -1104,7 +1283,6 @@
 
       membersCache = (data || []).map(normalizeMember);
       renderRoom();
-      showLatestBubble();
     }
 
     async function loadMessages() {
@@ -1120,13 +1298,11 @@
         return;
       }
 
-      messagesCache = (data || []).reverse().map(row => ({
-        id: row.id,
-        memberId: row.member_id,
-        name: row.nickname,
-        text: row.content,
-        createdAt: row.created_at
-      }));
+      messagesCache = (data || []).reverse().map(normalizeMessageRow);
+      lastLoadedMessageId = messagesCache.reduce((max, item) => {
+        const id = Number(item.id);
+        return Number.isFinite(id) && id > max ? id : max;
+      }, lastLoadedMessageId);
       renderMessages();
     }
 
@@ -1222,7 +1398,7 @@
       }
 
       await loadMembers();
-      await sendSystemMessage(payload.nickname + "进入了怀旧换装大厅。", true);
+      await sendSystemMessage("欢迎 " + payload.nickname + " 进入聊天室。", false);
     }
 
     async function heartbeat() {
@@ -1284,7 +1460,7 @@
       if (!stage || !currentMemberId) return;
       const pos = getStagePointerPosition(event);
       if (!pos) return;
-      saveCurrentMemberPosition(pos, null, { bubbleText: "我站到这里啦~" });
+      saveCurrentMemberPosition(pos, null, { silent: true });
     }
 
     function startCurrentMemberDrag(event) {
@@ -1328,7 +1504,7 @@
       suppressNextStageClick = true;
       document.querySelectorAll(".member.current.dragging").forEach(el => el.classList.remove("dragging"));
       if (state.moved && state.lastPos) {
-        saveCurrentMemberPosition(state.lastPos, null, { bubbleText: "我挪到这里啦~" });
+        saveCurrentMemberPosition(state.lastPos, null, { silent: true });
       }
       setTimeout(() => { suppressNextStageClick = false; }, 0);
     }
@@ -1347,9 +1523,31 @@
     }
 
     async function sendSystemMessage(text, localOnly) {
-      messagesCache.push({ id: "sys_" + Date.now(), type: "system", text, createdAt: Date.now() });
-      messagesCache = messagesCache.slice(-80);
-      renderMessages();
+      const cleanText = String(text || "").trim().slice(0, 120);
+      if (!cleanText) return;
+
+      if (localOnly) {
+        appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
+        renderMessages();
+        showSystemToast(cleanText);
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("chat_messages")
+        .insert({
+          room_id: ROOM_ID,
+          member_id: null,
+          nickname: "系统",
+          content: cleanText
+        });
+
+      if (error) {
+        console.warn("系统消息发送失败，使用本地显示", error);
+        appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
+        renderMessages();
+        showSystemToast(cleanText);
+      }
     }
 
     async function sendMessage() {
@@ -1383,6 +1581,9 @@
 
     async function clearRoom() {
       if (!confirm("确定退出多人聊天室吗？你的角色会从当前房间移除。")) return;
+      const current = membersCache.find(member => member.id === currentMemberId);
+      const nickname = current && current.name ? current.name : "用户";
+      await sendSystemMessage(nickname + " 已退出聊天室。", false);
       if (currentMemberId) {
         await supabaseClient.from("room_members").delete().eq("id", currentMemberId);
       }
@@ -1420,17 +1621,18 @@
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: "room_id=eq." + ROOM_ID }, payload => {
           const row = payload.new;
-          const message = {
-            id: row.id,
-            memberId: row.member_id,
-            name: row.nickname,
-            text: row.content,
-            createdAt: row.created_at
-          };
-          messagesCache.push(message);
-          messagesCache = messagesCache.slice(-80);
-          renderMessages();
-          showBubble(message.memberId, message.text);
+          const message = normalizeMessageRow(row);
+          const isNewAfterInitialLoad = Number(message.id) > lastLoadedMessageId;
+          if (appendMessage(message)) {
+            const numericId = Number(message.id);
+            if (Number.isFinite(numericId) && numericId > lastLoadedMessageId) lastLoadedMessageId = numericId;
+            renderMessages();
+            if (isSystemMessage(message)) {
+              if (isNewAfterInitialLoad) showSystemToast(message.text);
+            } else if (isNewAfterInitialLoad) {
+              showBubble(message.memberId, message.text);
+            }
+          }
         })
         .subscribe(status => {
           console.log("Supabase Realtime:", status);
@@ -1442,9 +1644,9 @@
       setupStagePositionClick();
       renderRoom();
       renderMessages();
+      await loadMessages();
       setupRealtime();
       await joinRoom();
-      await loadMessages();
       await loadMembers();
       setInterval(heartbeat, 25000);
       setInterval(loadMembers, 30000);
