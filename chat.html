@@ -897,6 +897,59 @@
       }
     }
 
+
+    /* =========================
+       手机端聊天记录面板修复
+       让手机端也显示历史消息，不影响发送、退出和在线用户
+       ========================= */
+    @media (max-width: 760px) {
+      .chat-main {
+        grid-template-rows: minmax(0, 1fr) 214px !important;
+      }
+
+      .message-panel {
+        flex-basis: 214px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 78px 1fr !important;
+        gap: 6px !important;
+        padding: 6px !important;
+        margin: 0 6px 6px !important;
+      }
+
+      .message-log {
+        display: block !important;
+        height: 78px !important;
+        min-height: 78px !important;
+        max-height: 78px !important;
+        overflow-y: auto !important;
+        padding: 6px 7px !important;
+        font-size: 11.5px !important;
+        line-height: 1.45 !important;
+        background: rgba(255,255,255,0.94) !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .log-line {
+        margin-bottom: 3px !important;
+      }
+
+      .message-box {
+        min-height: 0 !important;
+        gap: 5px !important;
+      }
+
+      .message-box textarea {
+        min-height: 54px !important;
+        height: 54px !important;
+        padding: 6px 7px !important;
+        font-size: 12.5px !important;
+      }
+
+      .button-row {
+        gap: 5px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
