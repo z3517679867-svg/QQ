@@ -3311,7 +3311,7 @@ h1 {
 
       return {
         id: getStableChatMemberId(),
-        name: name || "匿名小人",
+        name: String(name || "").trim().slice(0, 12),
         gender: currentGender,
         createdAt: Date.now(),
         layers: layers
@@ -3341,12 +3341,16 @@ h1 {
     }
 
     function enterRetroChatRoom() {
-      const defaultName = currentGender === "m" ? "蓝色企鹅" : "糖果泡泡";
-      const inputName = window.prompt("给这个形象取个聊天室昵称：", defaultName);
+      const inputName = window.prompt("请填写聊天室昵称（必填，最多12字）：", "");
 
       if (inputName === null) return;
 
-      const name = (inputName || defaultName).trim().slice(0, 12) || defaultName;
+      const name = String(inputName || "").trim().slice(0, 12);
+      if (!name) {
+        alert("进入聊天室前必须填写昵称，不能留空。");
+        return;
+      }
+
       const avatarData = buildChatAvatarData(name);
 
       if (!avatarData.layers || avatarData.layers.length === 0) {

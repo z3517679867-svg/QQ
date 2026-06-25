@@ -1254,6 +1254,80 @@
       }
     }
 
+
+    /* =========================
+       系统提示固定一行 + 聊天记录独立显示
+       系统提示不再堆进历史消息框，只在历史框上方显示最新一条
+       ========================= */
+    .system-line-fixed {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      height: 26px;
+      line-height: 24px;
+      padding: 0 10px;
+      border: 1px solid #f0ce72;
+      border-radius: 5px;
+      background: linear-gradient(180deg, #fffdea, #fff1b8);
+      color: #7a5300;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-panel {
+      grid-template-rows: 26px minmax(0, 1fr) !important;
+    }
+
+    .message-log {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .message-box {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .system-toast {
+      display: none !important;
+    }
+
+    @media (max-width: 760px) {
+      .message-panel {
+        height: 214px !important;
+        min-height: 214px !important;
+        max-height: 214px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 24px 62px minmax(0, 1fr) !important;
+        gap: 5px !important;
+      }
+
+      .system-line-fixed {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        height: 24px !important;
+        line-height: 22px !important;
+        padding: 0 8px !important;
+        font-size: 11.5px !important;
+      }
+
+      .message-log {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        height: 62px !important;
+        min-height: 62px !important;
+        max-height: 62px !important;
+      }
+
+      .message-box {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+        min-height: 0 !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1291,6 +1365,7 @@
     </div>
 
     <div class="message-panel">
+      <div id="systemLine" class="system-line-fixed" aria-live="polite">系统提示：欢迎进入多人怀旧换装大厅。</div>
       <div id="messageLog" class="message-log"></div>
       <div class="message-box">
         <textarea id="messageInput" maxlength="80" placeholder="输入一句话，所有在线用户都会看到。按 Enter 发送，Shift+Enter 换行。"></textarea>
@@ -1453,15 +1528,20 @@
       return true;
     }
 
+    function updateSystemLine(text) {
+      const line = document.getElementById("systemLine");
+      if (!line) return;
+      const cleanText = String(text || "").trim();
+      line.innerText = cleanText ? "系统提示：" + cleanText : "系统提示：欢迎进入多人怀旧换装大厅。";
+    }
+
+    function getLatestSystemMessageText() {
+      const latest = messagesCache.filter(message => isSystemMessage(message)).slice(-1)[0];
+      return latest ? latest.text : "欢迎进入多人怀旧换装大厅。";
+    }
+
     function showSystemToast(text) {
-      const toast = document.getElementById("systemToast");
-      if (!toast || !text) return;
-      toast.innerText = text;
-      toast.classList.add("show");
-      clearTimeout(systemToastTimer);
-      systemToastTimer = setTimeout(() => {
-        toast.classList.remove("show");
-      }, 3600);
+      updateSystemLine(text);
     }
 
     function setStatus(text) {
@@ -1591,13 +1671,19 @@
     function renderMessages() {
       const log = document.getElementById("messageLog");
       if (!log) return;
-      const messages = messagesCache.slice(-80);
-      if (!messages.length) {
-        log.innerHTML = `<div class="log-line system">系统提示：欢迎进入多人怀旧换装大厅。</div>`;
+
+      updateSystemLine(getLatestSystemMessageText());
+
+      const chatMessages = messagesCache
+        .filter(message => !isSystemMessage(message))
+        .slice(-60);
+
+      if (!chatMessages.length) {
+        log.innerHTML = `<div class="log-line system">暂无聊天消息。</div>`;
         return;
       }
-      log.innerHTML = messages.map(message => {
-        if (isSystemMessage(message)) return `<div class="log-line system">系统提示：${escapeHTML(message.text)}</div>`;
+
+      log.innerHTML = chatMessages.map(message => {
         return `<div class="log-line"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</div>`;
       }).join("");
       log.scrollTop = log.scrollHeight;
@@ -1706,8 +1792,15 @@
     function getLocalAvatarForJoin() {
       const avatar = readJSON(CHAT_AVATAR_KEY, null);
       if (!avatar || !Array.isArray(avatar.layers) || !avatar.layers.length) return null;
+
+      const cleanName = String(avatar.name || "").trim().slice(0, 12);
+      if (!cleanName) {
+        alert("进入聊天室前必须填写昵称，请先返回换装小屋重新进入聊天室。");
+        return null;
+      }
+
       avatar.id = getStableMemberIdForThisDevice();
-      if (!avatar.name) avatar.name = "匿名小人";
+      avatar.name = cleanName;
       localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatar));
       localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify([avatar]));
       return avatar;
@@ -1731,10 +1824,10 @@
       const payload = {
         id: currentMemberId,
         room_id: ROOM_ID,
-        nickname: String(avatar.name || "匿名小人").slice(0, 12),
+        nickname: String(avatar.name || "").trim().slice(0, 12),
         avatar: {
           id: avatar.id,
-          name: avatar.name,
+          name: String(avatar.name || "").trim().slice(0, 12),
           gender: avatar.gender || "f",
           layers: avatar.layers || []
         },
