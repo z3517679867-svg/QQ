@@ -3072,6 +3072,38 @@ window.ITEMS = {
     {
       "name": "香槟水手",
       "src": "assets/clothes_f/cloth_419.gif"
+    },
+    {
+      "name": "旧信机车",
+      "src": "assets/clothes_f/cloth_420.gif"
+    },
+    {
+      "name": "软糖兔装",
+      "src": "assets/clothes_f/cloth_421.gif"
+    },
+    {
+      "name": "绒球礼裙",
+      "src": "assets/clothes_f/cloth_422.gif"
+    },
+    {
+      "name": "幻彩古裙",
+      "src": "assets/clothes_f/cloth_423.gif"
+    },
+    {
+      "name": "橱窗运动",
+      "src": "assets/clothes_f/cloth_424.gif"
+    },
+    {
+      "name": "蕾丝茶裙",
+      "src": "assets/clothes_f/cloth_425.gif"
+    },
+    {
+      "name": "塔楼偶像",
+      "src": "assets/clothes_f/cloth_426.gif"
+    },
+    {
+      "name": "冰沙旗袍",
+      "src": "assets/clothes_f/cloth_427.gif"
     }
   ],
   "clothes_m": [
@@ -6698,6 +6730,10 @@ window.ITEMS = {
     {
       "name": "幻彩耳坠",
       "src": "assets/earring/37.gif"
+    },
+    {
+      "name": "虹光圆坠",
+      "src": "assets/earring/38.gif"
     }
   ],
   "face": [
