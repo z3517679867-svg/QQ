@@ -897,6 +897,182 @@
       }
     }
 
+
+    /* =========================
+       手机端聊天记录面板修复
+       让手机端也显示历史消息，不影响发送、退出和在线用户
+       ========================= */
+    @media (max-width: 760px) {
+      .chat-main {
+        grid-template-rows: minmax(0, 1fr) 214px !important;
+      }
+
+      .message-panel {
+        flex-basis: 214px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 78px 1fr !important;
+        gap: 6px !important;
+        padding: 6px !important;
+        margin: 0 6px 6px !important;
+      }
+
+      .message-log {
+        display: block !important;
+        height: 78px !important;
+        min-height: 78px !important;
+        max-height: 78px !important;
+        overflow-y: auto !important;
+        padding: 6px 7px !important;
+        font-size: 11.5px !important;
+        line-height: 1.45 !important;
+        background: rgba(255,255,255,0.94) !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .log-line {
+        margin-bottom: 3px !important;
+      }
+
+      .message-box {
+        min-height: 0 !important;
+        gap: 5px !important;
+      }
+
+      .message-box textarea {
+        min-height: 54px !important;
+        height: 54px !important;
+        padding: 6px 7px !important;
+        font-size: 12.5px !important;
+      }
+
+      .button-row {
+        gap: 5px !important;
+      }
+    }
+
+
+    /* =========================
+       2026-06-26 恢复聊天室房间显示尺寸
+       放大电脑端与手机端房间区域，保留历史消息、退出、在线用户和多人同步功能
+       ========================= */
+    .chat-page {
+      height: auto !important;
+      min-height: calc(100dvh - 34px) !important;
+      overflow: visible !important;
+    }
+
+    .chat-main {
+      flex: 0 0 auto !important;
+      min-height: 500px !important;
+      grid-template-columns: minmax(0, 1fr) 260px !important;
+      grid-template-rows: auto !important;
+    }
+
+    .room-wrap {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 500px !important;
+      overflow: hidden !important;
+    }
+
+    .room-stage {
+      flex: 1 1 auto !important;
+      height: auto !important;
+      min-height: 430px !important;
+    }
+
+    .message-panel {
+      flex: 0 0 180px !important;
+      min-height: 180px !important;
+    }
+
+    @media (min-width: 761px) {
+      .chat-page {
+        width: min(1180px, 96vw) !important;
+      }
+
+      .chat-main {
+        min-height: 520px !important;
+      }
+
+      .room-wrap {
+        min-height: 520px !important;
+      }
+
+      .room-stage {
+        min-height: 452px !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+
+      .chat-page {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        margin: 0 !important;
+        overflow: visible !important;
+      }
+
+      .chat-main {
+        display: block !important;
+        min-height: 0 !important;
+        padding: 6px !important;
+      }
+
+      .room-wrap {
+        min-height: 560px !important;
+        height: 560px !important;
+        margin: 0 0 6px !important;
+      }
+
+      .room-toolbar {
+        flex-wrap: wrap !important;
+        height: auto !important;
+        min-height: 76px !important;
+        align-content: center !important;
+      }
+
+      .mobile-member-list {
+        min-height: 36px !important;
+      }
+
+      .room-stage {
+        min-height: 448px !important;
+        height: auto !important;
+        flex: 1 1 auto !important;
+      }
+
+      .message-panel {
+        display: grid !important;
+        position: relative !important;
+        min-height: 238px !important;
+        height: auto !important;
+        flex-basis: auto !important;
+        margin: 0 6px 10px !important;
+        grid-template-rows: 92px auto !important;
+      }
+
+      .message-log {
+        height: 92px !important;
+        min-height: 92px !important;
+        max-height: 92px !important;
+      }
+
+      .message-box textarea {
+        min-height: 68px !important;
+        height: 68px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
