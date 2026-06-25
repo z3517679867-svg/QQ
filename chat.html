@@ -822,7 +822,10 @@
     const ROOM_ID = "main";
 
     const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
+    const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
     const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
+    const CHAT_DEVICE_MEMBER_KEY = "qqshow_chat_device_member_id_v2";
+    const CHAT_CLEANUP_MEMBER_IDS_KEY = "qqshow_chat_cleanup_member_ids_v1";
     const CHAT_ROOM_BG_KEY = "qqshow_chat_room_background_v1";
     const CHAT_ROOM_BACKGROUNDS = {
       castle: "chat_bg_fixed.png",
@@ -857,7 +860,7 @@
 
     let membersCache = [];
     let messagesCache = [];
-    let currentMemberId = localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
+    let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
     let dragPositionState = null;
     let suppressNextStageClick = false;
     let lastPositionUpdateAt = 0;
@@ -1127,11 +1130,53 @@
       renderMessages();
     }
 
+
+    function createSafeRandomId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return "device_" + window.crypto.randomUUID().replace(/-/g, "");
+      }
+      return "device_" + Date.now() + "_" + Math.random().toString(36).slice(2, 12);
+    }
+
+    function getStableMemberIdForThisDevice() {
+      let id = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
+      if (!id) id = createSafeRandomId();
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, id);
+      localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, id);
+      return id;
+    }
+
+    function readCleanupMemberIds() {
+      try {
+        const raw = localStorage.getItem(CHAT_CLEANUP_MEMBER_IDS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? Array.from(new Set(list.filter(Boolean))) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    async function cleanupOldMemberRows(currentId) {
+      const oldIds = readCleanupMemberIds().filter(id => id && id !== currentId);
+      if (!oldIds.length) return;
+      try {
+        await supabaseClient
+          .from("room_members")
+          .delete()
+          .in("id", oldIds.slice(0, 20));
+        localStorage.removeItem(CHAT_CLEANUP_MEMBER_IDS_KEY);
+      } catch (error) {
+        console.warn("清理旧在线角色失败，稍后会自动过期", error);
+      }
+    }
+
     function getLocalAvatarForJoin() {
       const avatar = readJSON(CHAT_AVATAR_KEY, null);
       if (!avatar || !Array.isArray(avatar.layers) || !avatar.layers.length) return null;
-      if (!avatar.id) avatar.id = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+      avatar.id = getStableMemberIdForThisDevice();
       if (!avatar.name) avatar.name = "匿名小人";
+      localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatar));
+      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify([avatar]));
       return avatar;
     }
 
@@ -1144,7 +1189,9 @@
       }
 
       currentMemberId = avatar.id;
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, currentMemberId);
       localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, currentMemberId);
+      await cleanupOldMemberRows(currentMemberId);
       const existingPos = avatar.pos || stagePositions[Math.floor(Math.random() * stagePositions.length)];
       const pos = clampStagePosition(existingPos);
 

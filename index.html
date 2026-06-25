@@ -3231,6 +3231,8 @@ h1 {
     const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
     const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
     const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
+    const CHAT_DEVICE_MEMBER_KEY = "qqshow_chat_device_member_id_v2";
+    const CHAT_CLEANUP_MEMBER_IDS_KEY = "qqshow_chat_cleanup_member_ids_v1";
 
     const CHAT_ALLOWED_LAYER_IDS = [
       { key: "hair_back", id: "layer-hair-back", z: 25, label: "后发" },
@@ -3263,6 +3265,39 @@ h1 {
       return src;
     }
 
+
+    function createSafeRandomId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return "device_" + window.crypto.randomUUID().replace(/-/g, "");
+      }
+      return "device_" + Date.now() + "_" + Math.random().toString(36).slice(2, 12);
+    }
+
+    function getStableChatMemberId() {
+      let id = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
+      if (!id) {
+        id = createSafeRandomId();
+      }
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, id);
+      localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, id);
+      return id;
+    }
+
+    function rememberOldMemberIdsForCleanup(nextId) {
+      const oldIds = [];
+      const currentId = localStorage.getItem(CHAT_CURRENT_MEMBER_KEY);
+      if (currentId && currentId !== nextId) oldIds.push(currentId);
+
+      readChatMembers().forEach(member => {
+        if (member && member.id && member.id !== nextId) oldIds.push(member.id);
+      });
+
+      const unique = Array.from(new Set(oldIds)).slice(0, 20);
+      if (unique.length) {
+        localStorage.setItem(CHAT_CLEANUP_MEMBER_IDS_KEY, JSON.stringify(unique));
+      }
+    }
+
     function buildChatAvatarData(name) {
       const layers = CHAT_ALLOWED_LAYER_IDS.map(layer => {
         return {
@@ -3275,7 +3310,7 @@ h1 {
       }).filter(layer => !!layer.src);
 
       return {
-        id: "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+        id: getStableChatMemberId(),
         name: name || "匿名小人",
         gender: currentGender,
         createdAt: Date.now(),
@@ -3294,15 +3329,15 @@ h1 {
     }
 
     function saveChatMember(avatarData) {
-      const members = readChatMembers();
-      members.push(avatarData);
-
-      /* 多人在线聊天室：本地只保存当前进入房间的形象，在线显示由 Supabase 同步。 */
-      const limited = members.slice(-12);
-
+      /*
+        防重复进入：同一台手机/电脑固定使用同一个 member id。
+        再次进入聊天室时只更新当前形象，不再新增一个在线角色。
+      */
+      rememberOldMemberIdsForCleanup(avatarData.id);
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, avatarData.id);
       localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatarData));
       localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, avatarData.id);
-      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify(limited));
+      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify([avatarData]));
     }
 
     function enterRetroChatRoom() {
