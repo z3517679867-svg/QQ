@@ -189,10 +189,6 @@ window.ITEMS = {
       "src": "assets/background/bg_027.gif"
     },
     {
-      "name": "晴窗沙龙",
-      "src": "assets/background/bg_028.gif"
-    },
-    {
       "name": "奶油沙龙",
       "src": "assets/background/bg_029.gif"
     },
@@ -1227,6 +1223,30 @@ window.ITEMS = {
     {
       "name": "幻彩阁楼",
       "src": "assets/background/bg_294.gif"
+    },
+    {
+      "name": "幻糖店铺",
+      "src": "assets/background/bg_295.gif"
+    },
+    {
+      "name": "珠光茶室",
+      "src": "assets/background/bg_296.gif"
+    },
+    {
+      "name": "珠光游园",
+      "src": "assets/background/bg_297.gif"
+    },
+    {
+      "name": "彩梦云阶",
+      "src": "assets/background/bg_298.gif"
+    },
+    {
+      "name": "流彩书房",
+      "src": "assets/background/bg_299.gif"
+    },
+    {
+      "name": "万花幻境",
+      "src": "assets/background/bg_300.gif"
     }
   ],
   "front": [
@@ -1691,6 +1711,10 @@ window.ITEMS = {
     {
       "name": "橱窗发尾后",
       "src": "assets/hair_f/hair_216_back.gif"
+    },
+    {
+      "name": "绒球长发后",
+      "src": "assets/hair_f/hair_218_back.gif"
     }
   ],
   "hair_back_m": [
@@ -3004,6 +3028,50 @@ window.ITEMS = {
     {
       "name": "绒球机车",
       "src": "assets/clothes_f/cloth_408.gif"
+    },
+    {
+      "name": "琉璃学院",
+      "src": "assets/clothes_f/cloth_409.gif"
+    },
+    {
+      "name": "雪绒婚纱",
+      "src": "assets/clothes_f/cloth_410.gif"
+    },
+    {
+      "name": "风铃魔裙",
+      "src": "assets/clothes_f/cloth_411.gif"
+    },
+    {
+      "name": "汽水斗篷",
+      "src": "assets/clothes_f/cloth_412.gif"
+    },
+    {
+      "name": "蝴蝶派装",
+      "src": "assets/clothes_f/cloth_413.gif"
+    },
+    {
+      "name": "猫眼熊装",
+      "src": "assets/clothes_f/cloth_414.gif"
+    },
+    {
+      "name": "花园侦探",
+      "src": "assets/clothes_f/cloth_415.gif"
+    },
+    {
+      "name": "旧信学院",
+      "src": "assets/clothes_f/cloth_416.gif"
+    },
+    {
+      "name": "信笺睡衣",
+      "src": "assets/clothes_f/cloth_417.gif"
+    },
+    {
+      "name": "猫眼偶像",
+      "src": "assets/clothes_f/cloth_418.gif"
+    },
+    {
+      "name": "香槟水手",
+      "src": "assets/clothes_f/cloth_419.gif"
     }
   ],
   "clothes_m": [
@@ -3410,6 +3478,30 @@ window.ITEMS = {
     {
       "name": "彩梦水手",
       "src": "assets/clothes_m/cloth_410.gif"
+    },
+    {
+      "name": "猫眼机车",
+      "src": "assets/clothes_m/cloth_411.gif"
+    },
+    {
+      "name": "玻璃公主",
+      "src": "assets/clothes_m/cloth_412.gif"
+    },
+    {
+      "name": "月桂魔裙",
+      "src": "assets/clothes_m/cloth_413.gif"
+    },
+    {
+      "name": "霓虹礼裙",
+      "src": "assets/clothes_m/cloth_414.gif"
+    },
+    {
+      "name": "贝壳舞裙",
+      "src": "assets/clothes_m/cloth_415.gif"
+    },
+    {
+      "name": "兔耳套装",
+      "src": "assets/clothes_m/cloth_416.gif"
     }
   ],
   "bottom": [
@@ -3606,12 +3698,20 @@ window.ITEMS = {
     {
       "name": "幻彩蓬裙",
       "src": "assets/bottom_f/bottom_031.gif"
+    },
+    {
+      "name": "幻糖动裤",
+      "src": "assets/bottom_f/bottom_032.gif"
     }
   ],
   "bottom_m": [
     {
       "name": "虹光半裙",
       "src": "assets/bottom_m/default.gif"
+    },
+    {
+      "name": "霓虹灯裤",
+      "src": "assets/bottom_m/bottom_001.gif"
     },
     {
       "name": "流彩短裙",
@@ -3946,6 +4046,14 @@ window.ITEMS = {
     {
       "name": "幻彩罩衫",
       "src": "assets/top_m/top_037.gif"
+    },
+    {
+      "name": "星爆罩衫",
+      "src": "assets/top_m/top_038.gif"
+    },
+    {
+      "name": "星爆纱衣",
+      "src": "assets/top_m/top_039.gif"
     }
   ],
   "body": [
@@ -4346,6 +4454,10 @@ window.ITEMS = {
     {
       "name": "万花丝巾",
       "src": "assets/neck/40.gif"
+    },
+    {
+      "name": "万花项圈",
+      "src": "assets/neck/41.gif"
     },
     {
       "name": "糖果颈环",
@@ -5592,6 +5704,18 @@ window.ITEMS = {
       "src": "assets/hair_f/hair_217.gif"
     },
     {
+      "name": "绒球长发",
+      "src": "assets/hair_f/hair_218_front.gif"
+    },
+    {
+      "name": "糖纸漫发",
+      "src": "assets/hair_f/hair_219.gif"
+    },
+    {
+      "name": "流苏发尾",
+      "src": "assets/hair_f/hair_221.gif"
+    },
+    {
       "name": "珠光绒发",
       "src": "assets/hair_f/3432.gif"
     },
@@ -6290,6 +6414,26 @@ window.ITEMS = {
     {
       "name": "糖果礼帽",
       "src": "assets/hat/hat_117.gif"
+    },
+    {
+      "name": "糖果水帽",
+      "src": "assets/hat/hat_118.gif"
+    },
+    {
+      "name": "珠光花帽",
+      "src": "assets/hat/hat_119.gif"
+    },
+    {
+      "name": "幻糖兔帽",
+      "src": "assets/hat/hat_120.gif"
+    },
+    {
+      "name": "万花巫帽",
+      "src": "assets/hat/hat_121.gif"
+    },
+    {
+      "name": "幻糖帽子",
+      "src": "assets/hat/hat_122.gif"
     }
   ],
   "glasses": [
@@ -6396,6 +6540,14 @@ window.ITEMS = {
     {
       "name": "彩梦护镜",
       "src": "assets/glasses/27.gif"
+    },
+    {
+      "name": "流彩星镜",
+      "src": "assets/glasses/28.gif"
+    },
+    {
+      "name": "霓虹眼镜",
+      "src": "assets/glasses/下载29.gif"
     },
     {
       "name": "电波心镜",
@@ -6534,6 +6686,18 @@ window.ITEMS = {
     {
       "name": "彩梦流苏",
       "src": "assets/earring/34.gif"
+    },
+    {
+      "name": "幻彩糖耳",
+      "src": "assets/earring/35.gif"
+    },
+    {
+      "name": "珠光耳坠",
+      "src": "assets/earring/36.gif"
+    },
+    {
+      "name": "幻彩耳坠",
+      "src": "assets/earring/37.gif"
     }
   ],
   "face": [
@@ -6606,6 +6770,10 @@ window.ITEMS = {
       "src": "assets/face/14.gif"
     },
     {
+      "name": "霓虹脸饰",
+      "src": "assets/face/15.gif"
+    },
+    {
       "name": "花火腮红",
       "src": "assets/face/hat_096.gif"
     },
@@ -6658,6 +6826,10 @@ window.ITEMS = {
     {
       "name": "电波话筒",
       "src": "assets/hand/hand_008.gif"
+    },
+    {
+      "name": "虹光书本",
+      "src": "assets/hand/9.gif"
     },
     {
       "name": "云朵雨伞",
@@ -6780,6 +6952,10 @@ window.ITEMS = {
     {
       "name": "霓虹魔阵",
       "src": "assets/effect/26.gif"
+    },
+    {
+      "name": "虹光流光",
+      "src": "assets/effect/27.gif"
     },
     {
       "name": "流彩花火",
@@ -7548,6 +7724,18 @@ window.ITEMS = {
     {
       "name": "万花标识",
       "src": "assets/text/text_134.gif"
+    },
+    {
+      "name": "糖果贴文",
+      "src": "assets/text/text_135.gif"
+    },
+    {
+      "name": "彩梦告白",
+      "src": "assets/text/text_136.gif"
+    },
+    {
+      "name": "珠光留言",
+      "src": "assets/text/text_137.gif"
     },
     {
       "name": "流彩标题",
