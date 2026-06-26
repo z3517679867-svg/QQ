@@ -1495,9 +1495,8 @@
     let positionUpdateTimer = null;
     let realtimeReady = false;
     let lastLoadedMessageId = 0;
-    // 每次进入/切换房间时记录当前房间已有的最大消息 ID；新进来的用户只看此后的消息。
+    // 恢复历史消息：手机端和电脑端都读取当前房间最近消息，不再按进入时间截断。
     let roomEntryBaselineMessageId = 0;
-    // 从“返回换装/返回换装小屋”回来时复用上次进房间的消息基准，保留那次会话里的历史。
     let preserveHistoryReentry = localStorage.getItem(CHAT_PRESERVE_HISTORY_KEY) === "1";
     let systemToastTimer = null;
 
@@ -1905,32 +1904,12 @@
 
     async function resetRoomHistoryBaseline(options) {
       const opts = options || {};
-      const savedBaseline = opts.preserve ? readSavedRoomBaseline(currentRoomId) : null;
-
-      if (savedBaseline !== null) {
-        roomEntryBaselineMessageId = savedBaseline;
-      } else {
-        const { data, error } = await supabaseClient
-          .from("chat_messages")
-          .select("id")
-          .eq("room_id", currentRoomId)
-          .order("id", { ascending: false })
-          .limit(1);
-
-        if (error) {
-          console.warn("读取房间消息基准失败，将按空历史进入", error);
-          roomEntryBaselineMessageId = lastLoadedMessageId || 0;
-        } else {
-          const latest = data && data[0] ? Number(data[0].id) : 0;
-          roomEntryBaselineMessageId = Number.isFinite(latest) ? latest : 0;
-        }
-        saveRoomBaseline(currentRoomId, roomEntryBaselineMessageId);
-      }
-
-      lastLoadedMessageId = roomEntryBaselineMessageId;
+      // 恢复历史消息：无论新进入、刷新、切换房间，均读取当前房间最近聊天记录。
+      roomEntryBaselineMessageId = 0;
+      lastLoadedMessageId = 0;
       messagesCache = [];
       Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
-      updateSystemLine(opts.preserve ? "已返回聊天室，保留离开前的聊天记录。" : "欢迎进入多人怀旧换装大厅。");
+      updateSystemLine(opts.preserve ? "已返回聊天室，正在恢复房间历史消息。" : "欢迎进入多人怀旧换装大厅。");
       renderMessages();
     }
 
@@ -1942,10 +1921,7 @@
         .order("created_at", { ascending: false })
         .limit(80);
 
-      if (roomEntryBaselineMessageId > 0) {
-        query = query.gt("id", roomEntryBaselineMessageId);
-      }
-
+      // 手机端和电脑端均恢复历史消息：不再按进入时间过滤旧消息。
       const { data, error } = await query;
 
       if (error) {
@@ -1957,7 +1933,7 @@
       lastLoadedMessageId = messagesCache.reduce((max, item) => {
         const id = Number(item.id);
         return Number.isFinite(id) && id > max ? id : max;
-      }, roomEntryBaselineMessageId || lastLoadedMessageId);
+      }, lastLoadedMessageId || 0);
       renderMessages();
     }
 
