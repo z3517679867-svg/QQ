@@ -1388,6 +1388,79 @@
     }
 
 
+
+    /* =========================
+       2026-06-26 手机端人物缩小 + 昵称避让 + 气泡 5 秒自动消失
+       ========================= */
+    .name-tag {
+      pointer-events: none !important;
+    }
+
+    @media (max-width: 760px) {
+      .member {
+        width: 122px !important;
+        height: 210px !important;
+      }
+
+      .chat-avatar {
+        transform: scale(0.68) !important;
+        transform-origin: top center !important;
+      }
+
+      .member .name-tag {
+        top: 162px !important;
+        bottom: auto !important;
+        min-width: 62px !important;
+        max-width: 104px !important;
+        padding: 2px 6px !important;
+        font-size: 10px !important;
+        line-height: 1.25 !important;
+        opacity: 0.92 !important;
+        z-index: 6 !important;
+        box-shadow: 0 1px 3px rgba(0,90,140,0.12) !important;
+      }
+
+      .bubble-stack {
+        top: 0 !important;
+        max-width: 158px !important;
+        gap: 2px !important;
+      }
+
+      .bubble-stack .bubble {
+        min-width: 78px !important;
+        max-width: 150px !important;
+        padding: 4px 7px !important;
+        font-size: 10.5px !important;
+        line-height: 1.3 !important;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .member {
+        width: 112px !important;
+        height: 198px !important;
+      }
+
+      .chat-avatar {
+        transform: scale(0.62) !important;
+      }
+
+      .member .name-tag {
+        top: 149px !important;
+        max-width: 94px !important;
+        font-size: 9.5px !important;
+      }
+
+      .bubble-stack {
+        max-width: 142px !important;
+      }
+
+      .bubble-stack .bubble {
+        max-width: 136px !important;
+        font-size: 10px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1488,6 +1561,8 @@
     let membersCache = [];
     let messagesCache = [];
     const activeBubblesByMember = {};
+    const activeBubbleTimersByMember = {};
+    const BUBBLE_DISPLAY_MS = 5000;
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
     let dragPositionState = null;
     let suppressNextStageClick = false;
@@ -1610,6 +1685,7 @@
 
       membersCache = [];
       messagesCache = [];
+      clearAllBubbleTimers();
       Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
       applyChatRoom(key);
       renderRoom();
@@ -1798,6 +1874,7 @@
         memberEl.className = "member" + (member.id === currentId ? " current" : "");
         memberEl.style.left = pos.left + "%";
         memberEl.style.top = pos.top + "%";
+        memberEl.style.setProperty("z-index", String(100 + Math.round(pos.top * 10) + (member.id === currentId ? 4 : 0)), "important");
         memberEl.setAttribute("data-member-id", member.id);
 
         if (member.id === currentId && !member.npc) {
@@ -1856,24 +1933,97 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    function clearBubbleTimer(memberId, bubbleId) {
+      if (!memberId || !bubbleId) return;
+      const timers = activeBubbleTimersByMember[memberId];
+      if (timers && timers[bubbleId]) {
+        clearTimeout(timers[bubbleId]);
+        delete timers[bubbleId];
+      }
+    }
+
+    function clearMemberBubbleTimers(memberId) {
+      const timers = activeBubbleTimersByMember[memberId];
+      if (!timers) return;
+      Object.keys(timers).forEach(key => clearTimeout(timers[key]));
+      delete activeBubbleTimersByMember[memberId];
+    }
+
+    function clearAllBubbleTimers() {
+      Object.keys(activeBubbleTimersByMember).forEach(clearMemberBubbleTimers);
+    }
+
+    function normalizeBubbleItem(item) {
+      const now = Date.now();
+      if (item && typeof item === "object") {
+        return {
+          id: item.id || ("bubble_" + now + "_" + Math.random().toString(36).slice(2)),
+          text: String(item.text || "").trim().slice(0, 80),
+          expiresAt: Number(item.expiresAt) || (now + BUBBLE_DISPLAY_MS)
+        };
+      }
+      return {
+        id: "bubble_" + now + "_" + Math.random().toString(36).slice(2),
+        text: String(item || "").trim().slice(0, 80),
+        expiresAt: now + BUBBLE_DISPLAY_MS
+      };
+    }
+
     function renderMemberBubbles(memberId) {
       if (!memberId) return;
       const stack = document.querySelector(`[data-bubbles="${CSS.escape(memberId)}"]`);
       if (!stack) return;
-      const bubbles = (activeBubblesByMember[memberId] || []).slice(-2);
-      stack.innerHTML = bubbles.map(text => {
-        return `<div class="bubble show">${escapeHTML(text)}</div>`;
+      const now = Date.now();
+      const bubbles = (activeBubblesByMember[memberId] || [])
+        .map(normalizeBubbleItem)
+        .filter(item => item.text && item.expiresAt > now)
+        .slice(-2);
+      activeBubblesByMember[memberId] = bubbles;
+      stack.innerHTML = bubbles.map(item => {
+        return `<div class="bubble show" data-bubble-id="${escapeHTML(item.id)}">${escapeHTML(item.text)}</div>`;
       }).join("");
+    }
+
+    function scheduleBubbleRemoval(memberId, bubbleId, delayMs) {
+      if (!memberId || !bubbleId) return;
+      if (!activeBubbleTimersByMember[memberId]) activeBubbleTimersByMember[memberId] = {};
+      clearBubbleTimer(memberId, bubbleId);
+      activeBubbleTimersByMember[memberId][bubbleId] = setTimeout(function () {
+        const current = activeBubblesByMember[memberId] || [];
+        activeBubblesByMember[memberId] = current.filter(item => {
+          const bubble = normalizeBubbleItem(item);
+          return bubble.id !== bubbleId;
+        });
+        clearBubbleTimer(memberId, bubbleId);
+        renderMemberBubbles(memberId);
+      }, Math.max(0, delayMs || BUBBLE_DISPLAY_MS));
     }
 
     function showBubble(memberId, text) {
       if (!memberId) return;
       const cleanText = String(text || "").trim().slice(0, 80);
       if (!cleanText) return;
-      const current = activeBubblesByMember[memberId] || [];
-      current.push(cleanText);
-      activeBubblesByMember[memberId] = current.slice(-2);
+      const now = Date.now();
+      const bubble = {
+        id: "bubble_" + now + "_" + Math.random().toString(36).slice(2),
+        text: cleanText,
+        expiresAt: now + BUBBLE_DISPLAY_MS
+      };
+      const current = (activeBubblesByMember[memberId] || [])
+        .map(normalizeBubbleItem)
+        .filter(item => item.text && item.expiresAt > now);
+      current.push(bubble);
+      const limited = current.slice(-2);
+      const keptIds = new Set(limited.map(item => item.id));
+      (activeBubblesByMember[memberId] || []).map(normalizeBubbleItem).forEach(item => {
+        if (!keptIds.has(item.id)) clearBubbleTimer(memberId, item.id);
+      });
+      activeBubblesByMember[memberId] = limited;
       renderMemberBubbles(memberId);
+      limited.forEach(item => {
+        const delay = Math.max(0, item.expiresAt - Date.now());
+        scheduleBubbleRemoval(memberId, item.id, delay);
+      });
     }
 
     function showLatestBubble() {
