@@ -338,10 +338,47 @@
 
     .log-line {
       margin-bottom: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
     }
 
     .log-line.system {
       color: #8a611f;
+    }
+
+    .log-content {
+      flex: 1 1 auto;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .report-btn {
+      flex: 0 0 auto;
+      border: 1px solid #8ccde8;
+      border-radius: 10px;
+      background: linear-gradient(#ffffff, #e9f9ff);
+      color: #27708b;
+      font-size: 11px;
+      line-height: 1.2;
+      padding: 2px 7px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .report-btn:hover {
+      background: #dff6ff;
+      color: #b54040;
+      border-color: #efb2b2;
+    }
+
+    .report-btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+      color: #7a9bad;
+      background: #edf7fb;
+      border-color: #c8e2ee;
     }
 
     .message-box {
@@ -998,6 +1035,17 @@
 
       .log-line {
         margin-bottom: 3px !important;
+        gap: 5px !important;
+      }
+
+      .log-content {
+        min-width: 0 !important;
+      }
+
+      .report-btn {
+        font-size: 10.5px !important;
+        padding: 1px 6px !important;
+        border-radius: 9px !important;
       }
 
       .message-box {
@@ -1597,6 +1645,8 @@
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
+    const REPORTS_LOCAL_KEY = "qqshow_chat_reported_message_ids_v1";
+    const reportedMessageIds = new Set(readJSON(REPORTS_LOCAL_KEY, []));
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
     let dragPositionState = null;
     let suppressNextStageClick = false;
@@ -1835,6 +1885,91 @@
       return true;
     }
 
+    function saveReportedMessageIds() {
+      try {
+        localStorage.setItem(REPORTS_LOCAL_KEY, JSON.stringify(Array.from(reportedMessageIds).slice(-300)));
+      } catch (error) {
+        console.warn("保存举报记录失败", error);
+      }
+    }
+
+    function getMessageById(messageId) {
+      const targetId = String(messageId || "");
+      return messagesCache.find(item => String(item.id) === targetId) || null;
+    }
+
+    function getReporterInfo() {
+      const members = getMembers();
+      const current = members.find(member => member.id === currentMemberId) || null;
+      return {
+        id: current && current.id ? current.id : currentMemberId || "",
+        name: current && current.name ? current.name : "匿名用户"
+      };
+    }
+
+    async function reportMessageById(messageId) {
+      const message = getMessageById(messageId);
+      if (!message || isSystemMessage(message)) {
+        showSystemToast("这条消息无法举报。");
+        return;
+      }
+
+      const key = String(message.id);
+      if (reportedMessageIds.has(key)) {
+        showSystemToast("你已经举报过这条消息。");
+        return;
+      }
+
+      const reporter = getReporterInfo();
+      if (reporter.id && message.memberId && String(reporter.id) === String(message.memberId)) {
+        showSystemToast("不能举报自己的发言。");
+        return;
+      }
+
+      const confirmed = confirm("确定举报这条不当言论吗？\n\n" + (message.name || "匿名用户") + "：" + (message.text || ""));
+      if (!confirmed) return;
+
+      const reasonInput = prompt("请选择或填写举报原因：辱骂 / 低俗 / 广告引流 / 骚扰 / 其他", "不当言论");
+      if (reasonInput === null) return;
+      const reason = String(reasonInput || "不当言论").trim().slice(0, 80) || "不当言论";
+
+      const { error } = await supabaseClient
+        .from("chat_reports")
+        .insert({
+          room_id: currentRoomId,
+          message_id: String(message.id),
+          reported_member_id: message.memberId || null,
+          reported_nickname: message.name || "匿名用户",
+          reported_content: message.text || "",
+          reporter_member_id: reporter.id || null,
+          reporter_nickname: reporter.name || "匿名用户",
+          reason: reason
+        });
+
+      if (error) {
+        console.error("举报失败", error);
+        const msg = String(error.message || "");
+        if (msg.includes("duplicate") || msg.includes("unique")) {
+          reportedMessageIds.add(key);
+          saveReportedMessageIds();
+          renderMessages();
+          showSystemToast("你已经举报过这条消息。");
+        } else if (msg.includes("chat_reports")) {
+          showSystemToast("举报表还没创建，请先在 Supabase 运行举报 SQL。 ");
+        } else {
+          showSystemToast("举报失败，请稍后再试。");
+        }
+        return;
+      }
+
+      reportedMessageIds.add(key);
+      saveReportedMessageIds();
+      renderMessages();
+      showSystemToast("举报已提交。累计 3 名不同用户举报后，系统会自动禁言 3 小时；重复达到举报阈值会永久禁言。 ");
+    }
+
+    window.reportMessageById = reportMessageById;
+
     function updateSystemLine(text) {
       const line = document.getElementById("systemLine");
       if (!line) return;
@@ -2001,7 +2136,11 @@
       }
 
       log.innerHTML = chatMessages.map(message => {
-        return `<div class="log-line"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</div>`;
+        const messageId = String(message.id || "");
+        const reported = reportedMessageIds.has(messageId);
+        const reportLabel = reported ? "已举报" : "举报";
+        const disabledAttr = reported ? " disabled" : "";
+        return `<div class="log-line" data-message-id="${escapeHTML(messageId)}"><span class="log-content"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</span><button type="button" class="report-btn" onclick="reportMessageById('${escapeHTML(messageId)}')"${disabledAttr}>${reportLabel}</button></div>`;
       }).join("");
       log.scrollTop = log.scrollHeight;
     }
@@ -2435,6 +2574,18 @@
       }
     }
 
+    function getChatSendErrorMessage(error) {
+      const raw = String((error && (error.message || error.details || error.hint || error.code)) || "");
+      if (/MEMBER_PERMANENT_BANNED/i.test(raw)) return "当前账号已被永久禁言，无法发言。";
+      if (/MEMBER_TEMP_BANNED/i.test(raw)) return "当前账号已被临时禁言 3 小时，暂时无法发言。";
+      if (/BANNED_WORD/i.test(raw)) return "消息包含违规内容，无法发送。";
+      if (/LINK_NOT_ALLOWED/i.test(raw)) return "消息包含链接，无法发送。";
+      if (/MESSAGE_TOO_LONG/i.test(raw)) return "消息太长，请控制在 80 字以内。";
+      if (/EMPTY_MESSAGE/i.test(raw)) return "不能发送空消息。";
+      return "消息发送失败，请稍后再试。";
+    }
+
+
     async function sendMessage() {
       const input = document.getElementById("messageInput");
       if (!input) return;
@@ -2460,7 +2611,9 @@
 
       if (error) {
         console.error("发送失败", error);
-        alert("消息发送失败：" + error.message);
+        input.value = text;
+        showSystemToast(getChatSendErrorMessage(error));
+        return;
       }
     }
 
