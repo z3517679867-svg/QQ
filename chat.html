@@ -1740,7 +1740,7 @@
 
     /* =========================
        2026-06-26 历史消息栏只显示五行
-       说明：只显示最近 5 条聊天记录；超出内容不撑高面板，历史框内可滚动。
+       说明：界面高度固定约显示 5 行；实际渲染最近 20 条，超出内容在历史框内滚动查看。
        ========================= */
     .message-log {
       line-height: 1.45 !important;
@@ -1829,7 +1829,7 @@
       <section class="room-wrap">
         <div class="room-toolbar">
           <span id="roomTitle">房间：城堡花园</span>
-          <span id="roomCapacity" class="hint">本房间最多 10 人</span>
+          <span id="roomCapacity" class="hint">本房间最多 12 人</span>
           <div class="bg-switcher" aria-label="聊天室房间选择">
             <span class="bg-label">房间</span>
             <button class="bg-btn" type="button" data-room="castle" onclick="switchChatRoom('castle')">城堡花园</button>
@@ -1852,7 +1852,7 @@
         <div class="side-actions">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装小屋</a>
           <button type="button" onclick="clearRoom()">退出聊天室</button>
-          <div class="hint">多人在线 Demo：每个背景对应一个独立房间，每个房间最多 10 人。</div>
+          <div class="hint">多人在线 Demo：每个背景对应一个独立房间，每个房间最多 12 人。</div>
         </div>
       </aside>
     </div>
@@ -1886,7 +1886,7 @@
     const CHAT_RETURN_REENTER_KEY = "qqshow_chat_return_reenter_v1";
     const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
     const CHAT_ROOM_BASELINE_PREFIX = "qqshow_chat_room_baseline_v1_";
-    const CHAT_ROOM_LIMIT = 10;
+    const CHAT_ROOM_LIMIT = 12;
     const CHAT_ROOMS = {
       castle: { id: "castle_garden", name: "城堡花园", bg: "chat_bg_fixed.png" },
       shibuya: { id: "shibuya_street", name: "涩谷街头", bg: "chat_bg_shibuya.png" },
@@ -1925,7 +1925,7 @@
     let membersCache = [];
     let messagesCache = [];
     const CHAT_HISTORY_FETCH_LIMIT = 20;
-    const CHAT_HISTORY_DISPLAY_LIMIT = 5;
+    const CHAT_HISTORY_DISPLAY_LIMIT = 20; // 读取并渲染最近20条，消息栏固定高度约显示5行，可滚动查看
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
@@ -2410,6 +2410,7 @@
 
       updateSystemLine(getLatestSystemMessageText());
 
+      // 历史消息：最多渲染最近 20 条；消息栏通过 CSS 固定为约 5 行高度，剩余内容可滚动查看。
       const chatMessages = messagesCache
         .filter(message => !isSystemMessage(message))
         .slice(-CHAT_HISTORY_DISPLAY_LIMIT);
@@ -2656,13 +2657,21 @@
 
       const canEnter = await canEnterRoom(currentRoomKey, { silent: joinOptions.roomSwitch });
       if (!canEnter) {
-        const fallbackKey = currentRoomKey === "castle" ? "shibuya" : "castle";
-        const fallbackOk = await canEnterRoom(fallbackKey, { silent: true });
-        if (fallbackOk) {
-          alert(getCurrentRoomConfig().name + "房间已满，已为你切换到" + CHAT_ROOMS[fallbackKey].name + "。每个房间最多 10 人。");
+        let fallbackKey = "";
+        for (const candidateKey of Object.keys(CHAT_ROOMS)) {
+          if (candidateKey === currentRoomKey) continue;
+          const fallbackOk = await canEnterRoom(candidateKey, { silent: true });
+          if (fallbackOk) {
+            fallbackKey = candidateKey;
+            break;
+          }
+        }
+
+        if (fallbackKey) {
+          alert(getCurrentRoomConfig().name + "房间已满，已为你切换到" + CHAT_ROOMS[fallbackKey].name + "。每个房间最多 " + CHAT_ROOM_LIMIT + " 人。");
           applyChatRoom(fallbackKey);
         } else {
-          alert("两个房间都已满，每个房间最多 10 人。请稍后再试。");
+          alert("所有房间都已满，每个房间最多 " + CHAT_ROOM_LIMIT + " 人。请稍后再试。");
           setStatus("当前房间已满");
           return;
         }
