@@ -1461,6 +1461,32 @@
       }
     }
 
+
+    /* 新增多房间按钮布局：桌面端可换行，手机端横向滑动，避免压缩房间画面 */
+    .bg-switcher {
+      flex-wrap: wrap !important;
+      justify-content: flex-end !important;
+      max-width: 100% !important;
+    }
+
+    @media (max-width: 760px) {
+      .bg-switcher {
+        justify-content: flex-start !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        padding: 1px 0 3px !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .bg-switcher::-webkit-scrollbar {
+        display: none;
+      }
+      .bg-btn {
+        flex: 0 0 auto !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1479,6 +1505,10 @@
             <span class="bg-label">房间</span>
             <button class="bg-btn" type="button" data-room="castle" onclick="switchChatRoom('castle')">城堡花园</button>
             <button class="bg-btn" type="button" data-room="shibuya" onclick="switchChatRoom('shibuya')">涩谷街头</button>
+            <button class="bg-btn" type="button" data-room="window" onclick="switchChatRoom('window')">窗外的风</button>
+            <button class="bg-btn" type="button" data-room="santorini" onclick="switchChatRoom('santorini')">圣托里尼</button>
+            <button class="bg-btn" type="button" data-room="stage" onclick="switchChatRoom('stage')">我的舞台</button>
+            <button class="bg-btn" type="button" data-room="garden" onclick="switchChatRoom('garden')">园林之语</button>
           </div>
         </div>
         <div id="mobileMemberList" class="mobile-member-list" aria-label="手机端在线用户"></div>
@@ -1492,7 +1522,7 @@
         <div class="side-actions">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装小屋</a>
           <button type="button" onclick="clearRoom()">退出聊天室</button>
-          <div class="hint">多人在线 Demo：城堡花园、涩谷街头是两个独立房间，每个房间最多 10 人。</div>
+          <div class="hint">多人在线 Demo：每个背景对应一个独立房间，每个房间最多 10 人。</div>
         </div>
       </aside>
     </div>
@@ -1529,7 +1559,11 @@
     const CHAT_ROOM_LIMIT = 10;
     const CHAT_ROOMS = {
       castle: { id: "castle_garden", name: "城堡花园", bg: "chat_bg_fixed.png" },
-      shibuya: { id: "shibuya_street", name: "涩谷街头", bg: "chat_bg_shibuya.png" }
+      shibuya: { id: "shibuya_street", name: "涩谷街头", bg: "chat_bg_shibuya.png" },
+      window: { id: "window_view", name: "窗外的风", bg: "chat_bg_window_view.png" },
+      santorini: { id: "santorini", name: "圣托里尼", bg: "chat_bg_santorini.png" },
+      stage: { id: "my_stage", name: "我的舞台", bg: "chat_bg_my_stage.png" },
+      garden: { id: "garden_words", name: "园林之语", bg: "chat_bg_garden_words.png" }
     };
     let currentRoomKey = getSavedRoomKey();
     let currentRoomId = CHAT_ROOMS[currentRoomKey].id;
