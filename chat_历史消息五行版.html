@@ -1602,6 +1602,220 @@
       }
     }
 
+
+    /* =========================
+       2026-06-26 背景区域缩短 + 历史消息增高版
+       目标：手机端和电脑端减少房间画面高度，把空间让给历史消息。
+       ========================= */
+    @media (min-width: 761px) {
+      .chat-main {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+      }
+
+      .room-stage {
+        min-height: 330px !important;
+        height: auto !important;
+      }
+
+      .message-panel {
+        flex: 0 0 238px !important;
+        height: 238px !important;
+        min-height: 238px !important;
+        max-height: 238px !important;
+        grid-template-columns: minmax(0, 1fr) 260px !important;
+        grid-template-rows: 26px minmax(0, 1fr) !important;
+        overflow: hidden !important;
+      }
+
+      .message-log {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .chat-main {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+      }
+
+      .room-wrap {
+        min-height: 0 !important;
+      }
+
+      .room-stage {
+        flex: 1 1 auto !important;
+        min-height: 300px !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: hidden !important;
+      }
+
+      .message-panel {
+        flex: 0 0 318px !important;
+        height: 318px !important;
+        min-height: 318px !important;
+        max-height: 318px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 24px 150px minmax(0, 1fr) !important;
+        gap: 6px !important;
+        overflow: hidden !important;
+      }
+
+      .message-log {
+        display: block !important;
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        height: 150px !important;
+        min-height: 150px !important;
+        max-height: 150px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        font-size: 12px !important;
+        line-height: 1.45 !important;
+      }
+
+      .message-box {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .message-box textarea,
+      .message-box textarea:focus,
+      #messageInput,
+      #messageInput:focus {
+        height: 56px !important;
+        min-height: 56px !important;
+        max-height: 56px !important;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .room-stage {
+        min-height: 270px !important;
+      }
+
+      .message-panel {
+        flex-basis: 300px !important;
+        height: 300px !important;
+        min-height: 300px !important;
+        max-height: 300px !important;
+        grid-template-rows: 24px 136px minmax(0, 1fr) !important;
+      }
+
+      .message-log {
+        height: 136px !important;
+        min-height: 136px !important;
+        max-height: 136px !important;
+      }
+    }
+
+    @media (max-height: 700px) and (max-width: 760px) {
+      .room-stage {
+        min-height: 235px !important;
+      }
+
+      .message-panel {
+        flex-basis: 286px !important;
+        height: 286px !important;
+        min-height: 286px !important;
+        max-height: 286px !important;
+        grid-template-rows: 24px 126px minmax(0, 1fr) !important;
+      }
+
+      .message-log {
+        height: 126px !important;
+        min-height: 126px !important;
+        max-height: 126px !important;
+      }
+    }
+
+
+    /* =========================
+       2026-06-26 历史消息栏只显示五行
+       说明：只显示最近 5 条聊天记录；超出内容不撑高面板，历史框内可滚动。
+       ========================= */
+    .message-log {
+      line-height: 1.45 !important;
+      height: 108px !important;
+      min-height: 108px !important;
+      max-height: 108px !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      box-sizing: border-box !important;
+    }
+
+    @media (min-width: 761px) {
+      .message-panel {
+        flex: 0 0 170px !important;
+        height: 170px !important;
+        min-height: 170px !important;
+        max-height: 170px !important;
+        grid-template-rows: 26px 108px !important;
+        align-content: start !important;
+      }
+
+      .message-log {
+        height: 108px !important;
+        min-height: 108px !important;
+        max-height: 108px !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .message-panel {
+        flex: 0 0 270px !important;
+        height: 270px !important;
+        min-height: 270px !important;
+        max-height: 270px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 24px 104px minmax(0, 1fr) !important;
+        gap: 6px !important;
+        overflow: hidden !important;
+      }
+
+      .message-log {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        height: 104px !important;
+        min-height: 104px !important;
+        max-height: 104px !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        padding: 6px 8px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      .message-box {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+      }
+    }
+
+    @media (max-width: 390px), (max-height: 700px) and (max-width: 760px) {
+      .message-panel {
+        flex-basis: 258px !important;
+        height: 258px !important;
+        min-height: 258px !important;
+        max-height: 258px !important;
+        grid-template-rows: 24px 98px minmax(0, 1fr) !important;
+      }
+
+      .message-log {
+        height: 98px !important;
+        min-height: 98px !important;
+        max-height: 98px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -2196,7 +2410,7 @@
 
       const chatMessages = messagesCache
         .filter(message => !isSystemMessage(message))
-        .slice(-60);
+        .slice(-5);
 
       if (!chatMessages.length) {
         log.innerHTML = `<div class="log-line system">暂无聊天消息。</div>`;
