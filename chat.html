@@ -1633,10 +1633,48 @@
       updateRoomCapacityText();
     }
 
+    function hasRenderableAvatarLayers(layers) {
+      return Array.isArray(layers) && layers.some(layer => {
+        if (!layer || typeof layer.src !== "string") return false;
+        const src = layer.src.trim();
+        if (!src) return false;
+        if (/^(undefined|null)$/i.test(src)) return false;
+        return true;
+      });
+    }
+
+    function isCategoryLikeNickname(name) {
+      const cleanName = String(name || "").trim();
+      if (!cleanName) return true;
+      // 这里用于过滤误入聊天室的素材项，例如“乱码衣服”“xxx上衣”等。
+      return /(衣服|上衣|下装|身体|脸|前发|后发|头发|帽子|眼镜|耳饰|脸饰品|背景|前景|特效|手持|颈饰|相框|装饰|翅膀|陪伴)$/.test(cleanName);
+    }
+
+    function isRenderableRoomMember(member) {
+      if (!member) return false;
+      if (member.npc) return false;
+      const name = String(member.name || "").trim();
+      const layers = Array.isArray(member.layers) ? member.layers : [];
+      if (!name) return false;
+      if (isCategoryLikeNickname(name)) return false;
+      if (!hasRenderableAvatarLayers(layers)) return false;
+      return true;
+    }
+
+    function isRenderableRoomMemberRow(row) {
+      const avatar = row && row.avatar && typeof row.avatar === "object" ? row.avatar : {};
+      const name = String((row && row.nickname) || avatar.name || "").trim();
+      const layers = Array.isArray(avatar.layers) ? avatar.layers : [];
+      if (!name) return false;
+      if (isCategoryLikeNickname(name)) return false;
+      if (!hasRenderableAvatarLayers(layers)) return false;
+      return true;
+    }
+
     function updateRoomCapacityText() {
       const cap = document.getElementById("roomCapacity");
       if (!cap) return;
-      const count = membersCache.filter(member => !member.npc).length;
+      const count = membersCache.filter(isRenderableRoomMember).length;
       cap.innerText = "本房间在线 " + count + "/" + CHAT_ROOM_LIMIT + " 人";
     }
 
@@ -1644,16 +1682,17 @@
       const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
       let query = supabaseClient
         .from("room_members")
-        .select("id", { count: "exact", head: true })
+        .select("id, nickname, avatar, last_seen")
         .eq("room_id", roomId)
-        .gte("last_seen", since);
+        .gte("last_seen", since)
+        .limit(50);
       if (excludeId) query = query.neq("id", excludeId);
-      const { count, error } = await query;
+      const { data, error } = await query;
       if (error) {
         console.warn("读取房间人数失败", error);
         return 0;
       }
-      return count || 0;
+      return (data || []).filter(isRenderableRoomMemberRow).length;
     }
 
     async function canEnterRoom(roomKey, options) {
@@ -1855,7 +1894,7 @@
       const mobileList = document.getElementById("mobileMemberList");
       if (!stage || !list) return;
 
-      const members = getMembers();
+      const members = getMembers().filter(isRenderableRoomMember);
       const currentId = getCurrentMemberId(members);
       stage.innerHTML = "";
       list.innerHTML = "";
@@ -2048,7 +2087,7 @@
         return;
       }
 
-      membersCache = (data || []).map(normalizeMember);
+      membersCache = (data || []).map(normalizeMember).filter(isRenderableRoomMember);
       renderRoom();
     }
 
