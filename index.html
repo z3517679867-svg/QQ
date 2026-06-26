@@ -2847,27 +2847,35 @@ h1 {
       const realHair = getRealCategory("hair");
 
       /*
-        兼容两种素材结构：
-        1. 后发单独放在 hair_back / hair_back_f / hair_back_m；
-        2. 前发和后发混放在 hair / hair_f / hair_m。
+        优先只在“当前性别”的头发素材里找后发，
+        避免男性头发误匹配到女性后发缩略图。
+        只有当前性别完全没有可用后发素材时，
+        才回退到通用 hair_back / hair 分类里查找。
       */
-      const candidates = []
+      const scopedCandidates = []
         .concat(ITEMS[realHairBack] || [])
-        .concat(ITEMS.hair_back || [])
-        .concat(ITEMS[realHair] || [])
-        .concat(ITEMS.hair || []);
+        .concat(ITEMS[realHair] || []);
 
-      const explicitBackItems = candidates.filter(item => item && item.src && isHairBackSrc(item.src));
+      const scopedExplicitBackItems = scopedCandidates.filter(item => item && item.src && isHairBackSrc(item.src));
+      const scopedHairBackCategoryItems = (ITEMS[realHairBack] || []).filter(item => item && item.src);
+      const scopedResult = uniqueHairItems(scopedExplicitBackItems.concat(scopedHairBackCategoryItems));
+
+      if (scopedResult.length > 0) {
+        return scopedResult;
+      }
 
       /*
-        如果后发分类本身没有 back 命名标记，也保留 hair_back 分类里的真实素材用于匹配。
+        兼容旧素材结构：如果当前性别目录里确实没有后发，
+        再回退到通用分类继续匹配。
       */
-      const hairBackCategoryItems = []
-        .concat(ITEMS[realHairBack] || [])
+      const fallbackCandidates = []
         .concat(ITEMS.hair_back || [])
-        .filter(item => item && item.src);
+        .concat(ITEMS.hair || []);
 
-      return uniqueHairItems(explicitBackItems.concat(hairBackCategoryItems));
+      const fallbackExplicitBackItems = fallbackCandidates.filter(item => item && item.src && isHairBackSrc(item.src));
+      const fallbackHairBackCategoryItems = (ITEMS.hair_back || []).filter(item => item && item.src);
+
+      return uniqueHairItems(fallbackExplicitBackItems.concat(fallbackHairBackCategoryItems));
     }
 
     function getMatchedHairBackSrc(frontSrc) {

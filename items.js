@@ -5774,8 +5774,32 @@ window.ITEMS = {
       "src": "assets/hair_m/default.gif"
     },
     {
+      "name": "蜜糖长发",
+      "src": "assets/hair_m/hair_1.gif"
+    },
+    {
+      "name": "流苏刘海",
+      "src": "assets/hair_m/hair_3.gif"
+    },
+    {
+      "name": "胶片侧发",
+      "src": "assets/hair_m/hair_4.gif"
+    },
+    {
+      "name": "书页卷发",
+      "src": "assets/hair_m/hair_6.gif"
+    },
+    {
+      "name": "舞会偶发",
+      "src": "assets/hair_m/hair_7.gif"
+    },
+    {
       "name": "月桂院发",
       "src": "assets/hair_m/hair_012.gif"
+    },
+    {
+      "name": "羽毛漫发",
+      "src": "assets/hair_m/hair_12.gif"
     },
     {
       "name": "蜜糖挑染",
@@ -5966,36 +5990,12 @@ window.ITEMS = {
       "src": "assets/hair_m/hair_184.gif"
     },
     {
-      "name": "蜜糖绒发",
-      "src": "assets/hair_m/hair_185.gif"
-    },
-    {
-      "name": "邮票偶发",
-      "src": "assets/hair_m/hair_186.gif"
-    },
-    {
-      "name": "夜航漫发",
-      "src": "assets/hair_m/hair_187.gif"
-    },
-    {
       "name": "蜜糖偶发",
       "src": "assets/hair_m/hair_188_front.gif"
     },
     {
-      "name": "烟火绒发",
-      "src": "assets/hair_m/hair_189.gif"
-    },
-    {
       "name": "雪绒层发",
       "src": "assets/hair_m/hair_190.gif"
-    },
-    {
-      "name": "银河发尾",
-      "src": "assets/hair_m/hair_191.gif"
-    },
-    {
-      "name": "绸缎偶发",
-      "src": "assets/hair_m/hair_192.gif"
     }
   ],
   "hat": [
