@@ -1342,17 +1342,17 @@
     }
 
     .message-panel {
-      grid-template-rows: 26px 26px minmax(0, 1fr) !important;
+      grid-template-rows: 26px minmax(0, 1fr) !important;
     }
 
     .message-log {
       grid-column: 1;
-      grid-row: 3;
+      grid-row: 2;
     }
 
     .message-box {
       grid-column: 2;
-      grid-row: 3;
+      grid-row: 2;
     }
 
     .system-toast {
@@ -1365,7 +1365,7 @@
         min-height: 244px !important;
         max-height: 244px !important;
         grid-template-columns: 1fr !important;
-        grid-template-rows: 24px 42px 62px minmax(0, 1fr) !important;
+        grid-template-rows: 24px 74px minmax(0, 1fr) !important;
         gap: 5px !important;
       }
 
@@ -1380,27 +1380,29 @@
 
       .system-announcement-fixed {
         grid-column: 1 !important;
-        grid-row: 2 !important;
-        height: 42px !important;
-        line-height: 18px !important;
-        padding: 2px 8px !important;
+        grid-row: auto !important;
+        height: auto !important;
+        min-height: 36px !important;
+        line-height: 17px !important;
+        padding: 3px 8px !important;
         font-size: 11.5px !important;
         white-space: normal !important;
         overflow: hidden !important;
         text-overflow: clip !important;
+        margin: 4px 0 2px !important;
       }
 
       .message-log {
         grid-column: 1 !important;
-        grid-row: 3 !important;
-        height: 62px !important;
-        min-height: 62px !important;
-        max-height: 62px !important;
+        grid-row: 2 !important;
+        height: 74px !important;
+        min-height: 74px !important;
+        max-height: 74px !important;
       }
 
       .message-box {
         grid-column: 1 !important;
-        grid-row: 4 !important;
+        grid-row: 3 !important;
         min-height: 0 !important;
       }
     }
@@ -1564,6 +1566,42 @@
       }
     }
 
+
+    /* 2026-06-26 修复：系统公告固定显示在房间选项下方 */
+    .room-toolbar #systemAnnouncement.system-announcement-fixed {
+      display: block !important;
+      flex: 0 0 100% !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      order: 999 !important;
+      margin: 2px 0 0 !important;
+      padding: 4px 9px !important;
+      min-height: 26px !important;
+      height: auto !important;
+      line-height: 18px !important;
+      border: 1px solid #f0ce72 !important;
+      border-radius: 5px !important;
+      background: linear-gradient(180deg, #fffdea, #fff1b8) !important;
+      color: #7a5300 !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      position: relative !important;
+      z-index: 50 !important;
+    }
+
+    @media (max-width: 760px) {
+      .room-toolbar #systemAnnouncement.system-announcement-fixed {
+        margin-top: 3px !important;
+        padding: 4px 7px !important;
+        min-height: 34px !important;
+        line-height: 16px !important;
+        font-size: 11.5px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1587,6 +1625,7 @@
             <button class="bg-btn" type="button" data-room="stage" onclick="switchChatRoom('stage')">我的舞台</button>
             <button class="bg-btn" type="button" data-room="garden" onclick="switchChatRoom('garden')">园林之语</button>
           </div>
+          <div id="systemAnnouncement" class="system-announcement-fixed" aria-label="系统公告">系统公告：欢迎大家来玩耍，注意文明用语~如有不当言论同时被三个用户举报会被禁言</div>
         </div>
         <div id="mobileMemberList" class="mobile-member-list" aria-label="手机端在线用户"></div>
         <div id="roomStage" class="room-stage"></div>
@@ -1606,7 +1645,6 @@
 
     <div class="message-panel">
       <div id="systemLine" class="system-line-fixed" aria-live="polite">系统提示：欢迎进入多人怀旧换装大厅。</div>
-      <div id="systemAnnouncement" class="system-announcement-fixed" aria-label="系统公告">系统公告：欢迎大家来玩耍，注意文明用语~如有不当言论同时被三个用户举报会被禁言</div>
       <div id="messageLog" class="message-log"></div>
       <div class="message-box">
         <textarea id="messageInput" maxlength="80" placeholder="输入一句话，所有在线用户都会看到。按 Enter 发送，Shift+Enter 换行。"></textarea>
