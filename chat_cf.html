@@ -2363,7 +2363,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（D1在线成员版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（HTTP轮询稳定版）。");
         return;
       }
 
@@ -2895,6 +2895,83 @@
       return avatar;
     }
 
+    let httpMessagePollTimer = null;
+    const HTTP_MESSAGE_POLL_INTERVAL_MS = 1500;
+
+    async function httpJoinRoom(avatar, pos) {
+      const response = await workerFetch("/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: currentRoomId,
+          member_id: currentMemberId,
+          nickname: String(avatar.name || "匿名小人").slice(0, 20),
+          avatar: {
+            id: avatar.id,
+            name: String(avatar.name || "匿名小人").slice(0, 20),
+            gender: avatar.gender || "f",
+            layers: avatar.layers || []
+          },
+          x: pos.left,
+          y: pos.top
+        })
+      });
+
+      if (response && response.members) {
+        applyWorkerMembers(response.members);
+      }
+      updateSystemLine("Cloudflare 聊天室已连接（HTTP轮询稳定版）。");
+      startMemberPolling();
+      startMessagePolling();
+      return response;
+    }
+
+    function startMessagePolling() {
+      stopMessagePolling();
+      loadMessages();
+      httpMessagePollTimer = setInterval(loadMessages, HTTP_MESSAGE_POLL_INTERVAL_MS);
+    }
+
+    function stopMessagePolling() {
+      if (httpMessagePollTimer) {
+        clearInterval(httpMessagePollTimer);
+        httpMessagePollTimer = null;
+      }
+    }
+
+    async function sendHttpMessage(text) {
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+      const pos = avatar && avatar.pos ? clampStagePosition(avatar.pos) : { left: 50, top: 82 };
+
+      const result = await workerFetch("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: currentRoomId,
+          member_id: currentMemberId,
+          nickname: avatar && avatar.name ? avatar.name : "匿名小人",
+          avatar: avatar ? {
+            id: avatar.id,
+            name: avatar.name,
+            gender: avatar.gender || "f",
+            layers: avatar.layers || []
+          } : {},
+          content: text,
+          x: pos.left,
+          y: pos.top
+        })
+      });
+
+      if (result && result.message) {
+        const message = normalizeWorkerMessage(result.message);
+        appendMessage(message);
+        renderMessages();
+        showBubble(currentMemberId, text);
+      }
+      await pollWorkerMembers();
+      await loadMessages();
+    }
+
     async function joinRoom(options) {
       const joinOptions = options || {};
       const avatar = getLocalAvatarForJoin();
@@ -2926,10 +3003,12 @@
       membersCache = [localMember].concat(membersCache.filter(member => member.id !== currentMemberId));
       renderRoom();
 
-      connectChatSocket(avatar, pos);
-      startMemberPolling();
-      setTimeout(function () { sendSocketPayload({ type: "sync" }); pollWorkerMembers(); }, 800);
-      setTimeout(function () { sendSocketPayload({ type: "sync" }); pollWorkerMembers(); }, 2200);
+      try {
+        await httpJoinRoom(avatar, pos);
+      } catch (error) {
+        console.error("HTTP 加入聊天室失败", error);
+        showSystemToast("聊天室连接失败，请刷新后重试。");
+      }
 
       if (preserveHistoryReentry) {
         showSystemToast(localMember.name + " 已返回" + getCurrentRoomConfig().name + "，继续上次聊天。");
@@ -2967,6 +3046,20 @@
       const doUpdate = () => {
         lastPositionUpdateAt = Date.now();
         sendSocketPayload({ type: "move", x: cleanPos.left, y: cleanPos.top });
+        workerFetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_id: currentRoomId,
+            member_id: currentMemberId,
+            x: cleanPos.left,
+            y: cleanPos.top
+          })
+        }).then(function (data) {
+          if (data && data.members) applyWorkerMembers(data.members);
+        }).catch(function (error) {
+          console.warn("HTTP 位置同步失败", error);
+        });
       };
 
       if (now - lastPositionUpdateAt > 500 || !opts.skipRender) {
@@ -3090,16 +3183,14 @@
         return;
       }
 
-      if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
-        showSystemToast("聊天室正在连接，请稍后再发送。");
-        return;
-      }
-
       input.value = "";
-      const sent = sendSocketPayload({ type: "chat", content: text });
-      if (!sent) {
+
+      try {
+        await sendHttpMessage(text);
+      } catch (error) {
+        console.error("HTTP 消息发送失败", error);
         input.value = text;
-        showSystemToast("消息发送失败，聊天室未连接。");
+        showSystemToast("消息发送失败，请稍后再试。");
       }
     }
 
@@ -3108,8 +3199,16 @@
       const current = membersCache.find(member => member.id === currentMemberId);
       const nickname = current && current.name ? current.name : "用户";
       await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", true);
+      try {
+        await workerFetch("/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_id: currentRoomId, member_id: currentMemberId })
+        });
+      } catch (error) {}
       closeChatSocket();
       stopMemberPolling();
+      stopMessagePolling();
       localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
       currentMemberId = "";
       membersCache = [];
@@ -3148,6 +3247,7 @@
       await loadMessages();
       await joinRoom();
       setInterval(heartbeat, 25000);
+      startMessagePolling();
     }
 
     window.addEventListener("beforeunload", function () {
