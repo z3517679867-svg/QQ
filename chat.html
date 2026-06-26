@@ -1924,6 +1924,8 @@
 
     let membersCache = [];
     let messagesCache = [];
+    const CHAT_HISTORY_FETCH_LIMIT = 20;
+    const CHAT_HISTORY_DISPLAY_LIMIT = 5;
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
@@ -2163,7 +2165,7 @@
       if (!message) return false;
       if (message.id && messagesCache.some(item => String(item.id) === String(message.id))) return false;
       messagesCache.push(message);
-      messagesCache = messagesCache.slice(-80);
+      messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
       return true;
     }
 
@@ -2410,7 +2412,7 @@
 
       const chatMessages = messagesCache
         .filter(message => !isSystemMessage(message))
-        .slice(-5);
+        .slice(-CHAT_HISTORY_DISPLAY_LIMIT);
 
       if (!chatMessages.length) {
         log.innerHTML = `<div class="log-line system">暂无聊天消息。</div>`;
@@ -2563,7 +2565,7 @@
         .select("id, member_id, nickname, content, created_at")
         .eq("room_id", currentRoomId)
         .order("created_at", { ascending: false })
-        .limit(80);
+        .limit(CHAT_HISTORY_FETCH_LIMIT);
 
       // 手机端和电脑端均恢复历史消息：不再按进入时间过滤旧消息。
       const { data, error } = await query;
