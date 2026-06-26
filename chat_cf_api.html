@@ -1974,8 +1974,8 @@
   </div>
 
   <script>
-    const CHAT_API_BASE = "https://qq-chat-worker.z3517679867.workers.dev";
-    const CHAT_WS_BASE = "wss://qq-chat-worker.z3517679867.workers.dev/ws";
+    const CHAT_API_BASE = "https://chat-api.loveofqshow.online";
+    const CHAT_WS_BASE = "wss://chat-api.loveofqshow.online/ws";
 
     const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
     const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
@@ -2134,15 +2134,6 @@
       return true;
     }
 
-    function isDisplayableHttpMember(member) {
-      if (!member) return false;
-      if (member.npc) return false;
-      const name = String(member.name || member.nickname || "").trim();
-      if (!name) return false;
-      if (isCategoryLikeNickname(name)) return false;
-      return true;
-    }
-
     function isRenderableRoomMemberRow(row) {
       const avatar = row && row.avatar && typeof row.avatar === "object" ? row.avatar : {};
       const name = String((row && row.nickname) || avatar.name || "").trim();
@@ -2156,7 +2147,7 @@
     function updateRoomCapacityText() {
       const cap = document.getElementById("roomCapacity");
       if (!cap) return;
-      const count = membersCache.filter(isDisplayableHttpMember).length;
+      const count = membersCache.filter(isRenderableRoomMember).length;
       cap.innerText = "本房间在线 " + count + "/" + CHAT_ROOM_LIMIT + " 人";
     }
 
@@ -2279,8 +2270,7 @@
     }
 
     function applyWorkerMembers(rawMembers) {
-      const rawList = Array.isArray(rawMembers) ? rawMembers : [];
-      const workerMembers = rawList.map(normalizeWorkerMember).filter(isDisplayableHttpMember);
+      const workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
       const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
       const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
         ? {
@@ -2300,9 +2290,6 @@
       }
 
       membersCache = workerMembers;
-      const backendCount = rawList.length;
-      const renderCount = workerMembers.length;
-      updateSystemLine("Cloudflare 聊天室已连接（HTTP手机旁观修复版）：后端在线 " + backendCount + " 人，页面显示 " + renderCount + " 人。");
       renderRoom();
     }
 
@@ -2314,7 +2301,7 @@
           applyWorkerMembers(data.members || []);
         }
       } catch (error) {
-        console.warn("读取在线成员失败", error); updateSystemLine("读取在线成员失败，请检查 /members 接口。");
+        console.warn("读取在线成员失败", error);
       }
     }
 
@@ -2376,7 +2363,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（HTTP手机旁观修复版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（自定义域名稳定版）。");
         return;
       }
 
@@ -2649,7 +2636,7 @@
       const mobileList = document.getElementById("mobileMemberList");
       if (!stage || !list) return;
 
-      const members = getMembers().filter(isDisplayableHttpMember);
+      const members = getMembers().filter(isRenderableRoomMember);
       const currentId = getCurrentMemberId(members);
       stage.innerHTML = "";
       list.innerHTML = "";
@@ -2933,7 +2920,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（HTTP手机旁观修复版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（自定义域名稳定版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
@@ -2989,12 +2976,7 @@
       const joinOptions = options || {};
       const avatar = getLocalAvatarForJoin();
       if (!avatar) {
-        setStatus("手机端未检测到本地形象，已进入旁观同步模式。请从换装页重新进入后再发言。");
-        showSystemToast("未检测到你的本地形象，正在同步在线用户。");
-        startMemberPolling();
-        startMessagePolling();
-        setTimeout(function () { pollWorkerMembers(); loadMessages(); }, 300);
-        setTimeout(function () { pollWorkerMembers(); loadMessages(); }, 1500);
+        setStatus("请先返回小屋设计形象，再进入聊天室");
         renderRoom();
         return;
       }
@@ -3263,10 +3245,9 @@
       renderMessages();
       await resetRoomHistoryBaseline({ preserve: preserveHistoryReentry });
       await loadMessages();
-      startMemberPolling();
-      startMessagePolling();
       await joinRoom();
       setInterval(heartbeat, 25000);
+      startMessagePolling();
     }
 
     window.addEventListener("beforeunload", function () {
