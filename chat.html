@@ -1816,6 +1816,108 @@
       }
     }
 
+
+    /* =========================
+       2026-06-26 手机端四句历史 + 背景放大 + 底部可选站位版
+       说明：历史消息仍读取并渲染最近 20 条；手机端消息框只露出约 4 句，剩余可滚动查看；人物站位不再整体下移，可手动选择站到背景底部。
+       ========================= */
+    .member {
+      transform: translate(-50%, -100%) !important;
+    }
+
+    @media (min-width: 761px) {
+      .room-stage {
+        min-height: 390px !important;
+      }
+
+      .member {
+        transform: translate(-50%, -100%) !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .room-stage {
+        min-height: 350px !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+
+      .message-panel {
+        flex: 0 0 238px !important;
+        height: 238px !important;
+        min-height: 238px !important;
+        max-height: 238px !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 24px 82px minmax(0, 1fr) !important;
+        gap: 6px !important;
+        overflow: hidden !important;
+      }
+
+      .message-log {
+        display: block !important;
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        height: 82px !important;
+        min-height: 82px !important;
+        max-height: 82px !important;
+        font-size: 12px !important;
+        line-height: 1.35 !important;
+        padding: 5px 8px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      .message-box {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+        min-height: 0 !important;
+      }
+
+      .message-box textarea,
+      .message-box textarea:focus,
+      #messageInput,
+      #messageInput:focus {
+        height: 54px !important;
+        min-height: 54px !important;
+        max-height: 54px !important;
+      }
+
+      .member {
+        transform: translate(-50%, -100%) !important;
+      }
+    }
+
+    @media (max-width: 390px), (max-height: 700px) and (max-width: 760px) {
+      .room-stage {
+        min-height: 320px !important;
+      }
+
+      .message-panel {
+        flex-basis: 228px !important;
+        height: 228px !important;
+        min-height: 228px !important;
+        max-height: 228px !important;
+        grid-template-rows: 24px 76px minmax(0, 1fr) !important;
+      }
+
+      .message-log {
+        height: 76px !important;
+        min-height: 76px !important;
+        max-height: 76px !important;
+      }
+    }
+
+
+    /* 底部站位安全区：人物以脚底为锚点，昵称始终留在聊天背景内部 */
+    .member {
+      transform: translate(-50%, -100%) !important;
+    }
+
+    .member .name-tag {
+      pointer-events: none !important;
+    }
+
   </style>
 </head>
 <body>
@@ -1905,19 +2007,21 @@
     });
 
     const stagePositions = [
-      { left: 18, top: 88 },
-      { left: 36, top: 80 },
-      { left: 55, top: 91 },
-      { left: 75, top: 83 },
-      { left: 24, top: 65 },
-      { left: 47, top: 67 },
-      { left: 68, top: 66 },
-      { left: 86, top: 91 },
-      { left: 10, top: 78 },
-      { left: 90, top: 74 },
-      { left: 42, top: 94 },
-      { left: 62, top: 94 }
+      { left: 18, top: 90 },
+      { left: 36, top: 83 },
+      { left: 55, top: 93 },
+      { left: 75, top: 86 },
+      { left: 24, top: 69 },
+      { left: 47, top: 71 },
+      { left: 68, top: 70 },
+      { left: 86, top: 93 },
+      { left: 10, top: 81 },
+      { left: 90, top: 78 },
+      { left: 42, top: 96 },
+      { left: 62, top: 96 }
     ];
+
+    const STAGE_STAND_DOWN_OFFSET = 0;
 
     // 不再显示系统默认角色；房间里只显示真实进入聊天室的用户。
     const fallbackMembers = [];
@@ -2108,7 +2212,7 @@
       const top = Number(pos && pos.top);
       return {
         left: Math.max(5, Math.min(95, Number.isFinite(left) ? left : 50)),
-        top: Math.max(52, Math.min(96, Number.isFinite(top) ? top : 86))
+        top: Math.max(50, Math.min(98, Number.isFinite(top) ? top : 88))
       };
     }
 
@@ -2313,8 +2417,14 @@
     }
 
     function getMemberPosition(member, index) {
-      if (member && member.pos && typeof member.pos === "object") return clampStagePosition(member.pos);
-      return stagePositions[index % stagePositions.length];
+      const basePos = (member && member.pos && typeof member.pos === "object")
+        ? member.pos
+        : stagePositions[index % stagePositions.length];
+      const offset = Number.isFinite(STAGE_STAND_DOWN_OFFSET) ? STAGE_STAND_DOWN_OFFSET : 0;
+      return clampStagePosition({
+        left: basePos.left,
+        top: Number(basePos.top) + offset
+      });
     }
 
     function createAvatarElement(member) {
