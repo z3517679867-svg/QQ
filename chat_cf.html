@@ -2004,6 +2004,8 @@
     let chatReconnectTimer = null;
     let shouldReconnectSocket = true;
     let lastJoinPayload = null;
+    let memberPollTimer = null;
+    const MEMBER_POLL_INTERVAL_MS = 1500;
 
     const stagePositions = [
       { left: 18, top: 90 },
@@ -2267,6 +2269,55 @@
       };
     }
 
+    function applyWorkerMembers(rawMembers) {
+      const workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
+      const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
+        ? {
+            id: currentMemberId,
+            name: String(localAvatar.name || "匿名小人").slice(0, 12),
+            gender: localAvatar.gender || "f",
+            layers: localAvatar.layers || [],
+            pos: clampStagePosition(localAvatar.pos || stagePositions[0]),
+            index: 0,
+            backgroundKey: currentRoomKey,
+            lastSeen: Date.now()
+          }
+        : null;
+
+      if (localMember && !workerMembers.some(member => member.id === currentMemberId)) {
+        workerMembers.unshift(localMember);
+      }
+
+      membersCache = workerMembers;
+      renderRoom();
+    }
+
+    async function pollWorkerMembers() {
+      if (!currentRoomId) return;
+      try {
+        const data = await workerFetch("/members?room_id=" + encodeURIComponent(currentRoomId));
+        if (data && data.ok) {
+          applyWorkerMembers(data.members || []);
+        }
+      } catch (error) {
+        console.warn("读取在线成员失败", error);
+      }
+    }
+
+    function startMemberPolling() {
+      stopMemberPolling();
+      pollWorkerMembers();
+      memberPollTimer = setInterval(pollWorkerMembers, MEMBER_POLL_INTERVAL_MS);
+    }
+
+    function stopMemberPolling() {
+      if (memberPollTimer) {
+        clearInterval(memberPollTimer);
+        memberPollTimer = null;
+      }
+    }
+
     async function workerFetch(path, options) {
       const response = await fetch(CHAT_API_BASE + path, options || {});
       if (!response.ok) {
@@ -2285,6 +2336,7 @@
       }
       chatSocket = null;
       chatSocketReady = false;
+      stopMemberPolling();
     }
 
     function sendSocketPayload(payload) {
@@ -2305,14 +2357,18 @@
 
       if (data.type === "connected") {
         chatSocketReady = true;
-        if (lastJoinPayload) sendSocketPayload(lastJoinPayload);
-        updateSystemLine("Cloudflare 聊天室已连接。");
+        if (lastJoinPayload) {
+          sendSocketPayload(lastJoinPayload);
+          setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 300);
+          setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
+        }
+        startMemberPolling();
+        updateSystemLine("Cloudflare 聊天室已连接（D1在线成员版）。");
         return;
       }
 
       if (data.type === "members") {
-        membersCache = (data.members || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
-        renderRoom();
+        applyWorkerMembers(data.members || []);
         return;
       }
 
@@ -2368,6 +2424,8 @@
       chatSocket.addEventListener("open", function () {
         chatSocketReady = true;
         sendSocketPayload(lastJoinPayload);
+        sendSocketPayload({ type: "sync" });
+        startMemberPolling();
       });
       chatSocket.addEventListener("message", handleSocketMessage);
       chatSocket.addEventListener("close", function () {
@@ -2869,6 +2927,9 @@
       renderRoom();
 
       connectChatSocket(avatar, pos);
+      startMemberPolling();
+      setTimeout(function () { sendSocketPayload({ type: "sync" }); pollWorkerMembers(); }, 800);
+      setTimeout(function () { sendSocketPayload({ type: "sync" }); pollWorkerMembers(); }, 2200);
 
       if (preserveHistoryReentry) {
         showSystemToast(localMember.name + " 已返回" + getCurrentRoomConfig().name + "，继续上次聊天。");
@@ -3048,6 +3109,7 @@
       const nickname = current && current.name ? current.name : "用户";
       await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", true);
       closeChatSocket();
+      stopMemberPolling();
       localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
       currentMemberId = "";
       membersCache = [];
