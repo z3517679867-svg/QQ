@@ -2165,11 +2165,22 @@
       const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
       if (key === currentRoomKey) return;
 
+      const oldRoomId = currentRoomId;
+      const oldRoomName = getCurrentRoomConfig().name;
       const oldMember = membersCache.find(member => member.id === currentMemberId);
       const oldName = oldMember && oldMember.name ? oldMember.name : "用户";
 
       if (currentMemberId) {
-        await sendSystemMessage(oldName + " 已退出" + getCurrentRoomConfig().name + "。", true);
+        await sendSystemMessage(oldName + " 已退出" + oldRoomName + "。", true);
+        try {
+          await workerFetch("/leave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ room_id: oldRoomId, member_id: currentMemberId })
+          });
+        } catch (error) {
+          console.warn("切换房间时清理旧房间在线成员失败", error);
+        }
       }
 
       membersCache = [];
@@ -2363,7 +2374,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（自定义域名稳定版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（切房间清理版）。");
         return;
       }
 
@@ -2920,7 +2931,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（自定义域名稳定版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（切房间清理版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
