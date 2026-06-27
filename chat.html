@@ -2061,7 +2061,10 @@
     let messagePollInFlight = false;
     let lastMembersRenderHash = "";
     let lastMessagesRenderHash = "";
-    const MEMBER_POLL_INTERVAL_MS = 4500;
+    let lastChatActivityAt = Date.now();
+    const HIDDEN_MESSAGE_POLL_INTERVAL_MS = 60000;
+    const HIDDEN_MEMBER_POLL_INTERVAL_MS = 60000;
+    const MEMBER_POLL_INTERVAL_MS = 12000; // 省请求：在线成员 12 秒刷新一次
 
     const stagePositions = [
       { left: 18, top: 90 },
@@ -2219,6 +2222,7 @@
     }
 
     async function switchChatRoom(roomKey) {
+      markChatActivity();
       const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
       if (key === currentRoomKey) return;
 
@@ -2382,8 +2386,18 @@
       }
     }
 
+    function markChatActivity() {
+      lastChatActivityAt = Date.now();
+    }
+
+    function shouldSkipBackgroundPolling(options) {
+      const opts = options || {};
+      return document.hidden && !opts.forceRender && !opts.forceHistory;
+    }
+
     async function pollWorkerMembers(options) {
       if (!currentRoomId || memberPollInFlight) return;
+      if (shouldSkipBackgroundPolling(options)) return;
       memberPollInFlight = true;
       try {
         const data = await workerFetch("/members?room_id=" + encodeURIComponent(currentRoomId), null, 9000);
@@ -2397,15 +2411,25 @@
       }
     }
 
+    function getMemberPollDelay() {
+      return document.hidden ? HIDDEN_MEMBER_POLL_INTERVAL_MS : MEMBER_POLL_INTERVAL_MS;
+    }
+
     function startMemberPolling() {
       stopMemberPolling();
       pollWorkerMembers({ forceRender: true });
-      memberPollTimer = setInterval(function () { pollWorkerMembers(); }, MEMBER_POLL_INTERVAL_MS);
+      const tick = function () {
+        memberPollTimer = setTimeout(async function () {
+          await pollWorkerMembers();
+          tick();
+        }, getMemberPollDelay());
+      };
+      tick();
     }
 
     function stopMemberPolling() {
       if (memberPollTimer) {
-        clearInterval(memberPollTimer);
+        clearTimeout(memberPollTimer);
         memberPollTimer = null;
       }
     }
@@ -2479,7 +2503,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（12人显示修复版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（省请求稳定版：成员12秒、消息5秒、保活60秒，空闲自动降频）。");
         return;
       }
 
@@ -3023,27 +3047,57 @@
     }
 
     async function loadMessages(options) {
+      const opts = options || {};
       if (!currentRoomId || messagePollInFlight) return;
+      if (shouldSkipBackgroundPolling(opts)) return;
       messagePollInFlight = true;
       try {
         const previousMaxId = Number(lastLoadedMessageId || 0);
-        const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT, null, 9000);
-        const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
-        const nextHash = nextMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
-        messagesCache = nextMessages;
-        const newMaxId = nextMessages.reduce((max, item) => {
+        const useIncremental = previousMaxId > 0 && !opts.forceHistory;
+        const afterParam = useIncremental ? "&after_id=" + encodeURIComponent(previousMaxId) : "";
+        const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT + afterParam, null, 9000);
+        const incomingMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
+
+        if (useIncremental && data.full_history !== true) {
+          let changed = false;
+          incomingMessages.forEach(message => {
+            const id = Number(message.id || 0);
+            if (Number.isFinite(id) && id > previousMaxId) {
+              if (appendMessage(message)) {
+                changed = true;
+                showMessageBubbleOnce(message);
+              }
+            }
+          });
+
+          if (changed) {
+            messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
+            lastMessagesRenderHash = messagesCache.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
+            renderMessages();
+          }
+
+          const newMaxId = messagesCache.reduce((max, item) => {
+            const id = Number(item.id);
+            return Number.isFinite(id) && id > max ? id : max;
+          }, previousMaxId || 0);
+          lastLoadedMessageId = newMaxId;
+          return;
+        }
+
+        const nextHash = incomingMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
+        messagesCache = incomingMessages.slice(-CHAT_HISTORY_FETCH_LIMIT);
+        const newMaxId = messagesCache.reduce((max, item) => {
           const id = Number(item.id);
           return Number.isFinite(id) && id > max ? id : max;
         }, previousMaxId || 0);
 
-        if ((options && options.forceRender) || nextHash !== lastMessagesRenderHash) {
+        if (opts.forceRender || nextHash !== lastMessagesRenderHash) {
           lastMessagesRenderHash = nextHash;
           renderMessages();
         }
 
-        // 初次进入只恢复历史，不弹旧气泡；之后轮询到的新发言才弹气泡。
         if (previousMaxId > 0) {
-          nextMessages.forEach(message => {
+          messagesCache.forEach(message => {
             const id = Number(message.id || 0);
             if (Number.isFinite(id) && id > previousMaxId) {
               showMessageBubbleOnce(message);
@@ -3108,7 +3162,7 @@
 
     let httpMessagePollTimer = null;
     let heartbeatTimer = null;
-    const HTTP_MESSAGE_POLL_INTERVAL_MS = 1500;
+    const HTTP_MESSAGE_POLL_INTERVAL_MS = 5000; // 省请求：消息 5 秒刷新一次
 
     async function httpJoinRoom(avatar, pos) {
       const response = await workerFetch("/join", {
@@ -3132,21 +3186,35 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（12人显示修复版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（省请求稳定版：成员12秒、消息5秒、保活60秒，空闲自动降频）。");
       startMemberPolling();
       startMessagePolling();
       return response;
     }
 
+    function getMessagePollDelay() {
+      if (document.hidden) return HIDDEN_MESSAGE_POLL_INTERVAL_MS;
+      const idleMs = Date.now() - lastChatActivityAt;
+      if (idleMs > 5 * 60 * 1000) return 15000;
+      if (idleMs > 60 * 1000) return 8000;
+      return HTTP_MESSAGE_POLL_INTERVAL_MS;
+    }
+
     function startMessagePolling() {
       stopMessagePolling();
-      loadMessages({ forceRender: true });
-      httpMessagePollTimer = setInterval(function () { loadMessages(); }, HTTP_MESSAGE_POLL_INTERVAL_MS);
+      loadMessages({ forceRender: true, forceHistory: true });
+      const tick = function () {
+        httpMessagePollTimer = setTimeout(async function () {
+          await loadMessages();
+          tick();
+        }, getMessagePollDelay());
+      };
+      tick();
     }
 
     function stopMessagePolling() {
       if (httpMessagePollTimer) {
-        clearInterval(httpMessagePollTimer);
+        clearTimeout(httpMessagePollTimer);
         httpMessagePollTimer = null;
       }
     }
@@ -3175,6 +3243,10 @@
         })
       });
 
+      if (result && result.members) {
+        applyWorkerMembers(result.members);
+      }
+
       if (result && result.message) {
         const message = normalizeWorkerMessage(result.message);
         if (sendOptions.tempId) removeMessageById(sendOptions.tempId);
@@ -3190,12 +3262,8 @@
         showBubble(currentMemberId, text);
       }
 
-      // 发送成功后的刷新放到后台做，不再让它影响“输入框清空”和发送结果。
-      setTimeout(function () {
-        pollWorkerMembers().catch(function () {});
-        loadMessages().catch(function () {});
-      }, 100);
-
+      // 省请求：发送成功后不再额外立即请求 /members 和 /history。
+      // 本机已即时显示消息；其他用户由自己的轮询接收。
       return result;
     }
 
@@ -3333,11 +3401,11 @@
         });
       };
 
-      if (now - lastPositionUpdateAt > 500 || !opts.skipRender) {
+      if (now - lastPositionUpdateAt > 1500 || !opts.skipRender) {
         doUpdate();
       } else {
         clearTimeout(positionUpdateTimer);
-        positionUpdateTimer = setTimeout(doUpdate, 520);
+        positionUpdateTimer = setTimeout(doUpdate, 1500);
       }
     }
 
@@ -3351,6 +3419,7 @@
     }
 
     function moveCurrentMemberToClick(event) {
+      markChatActivity();
       if (suppressNextStageClick) {
         suppressNextStageClick = false;
         return;
@@ -3442,6 +3511,7 @@
 
 
     async function sendMessage() {
+      markChatActivity();
       const input = document.getElementById("messageInput");
       if (!input) return;
       const text = input.value.trim().replace(/\s+/g, " ").slice(0, 80);
@@ -3540,7 +3610,7 @@
       await loadMessages();
       await joinRoom();
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      heartbeatTimer = setInterval(heartbeat, 30000);
+      heartbeatTimer = setInterval(heartbeat, 60000);
       heartbeat();
     }
 
@@ -3552,6 +3622,7 @@
     });
 
     function resumeMobileChatPolling() {
+      markChatActivity();
       if (!currentMemberId) return;
       heartbeat();
       pollWorkerMembers({ forceRender: true });
@@ -3559,6 +3630,13 @@
       startMemberPolling();
       startMessagePolling();
     }
+
+
+    // 省请求：只有用户实际操作后，短时间内保持较快刷新；长期挂着会自动降频。
+    window.qq_chat_activity_events_installed = true;
+    ["pointerdown", "keydown", "touchstart"].forEach(function (eventName) {
+      window.addEventListener(eventName, markChatActivity, { passive: true });
+    });
 
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden) {
