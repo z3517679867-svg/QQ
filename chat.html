@@ -1943,6 +1943,18 @@
         transition: left 0.06s ease, top 0.06s ease !important;
       }
     }
+  
+    /* bubble-dedupe-no-flash */
+    .chat-log,
+    .log-line,
+    .bubble-stack,
+    .member-bubble {
+      backface-visibility: hidden;
+    }
+
+    .log-line.pending {
+      opacity: 0.82;
+    }
   </style>
 </head>
 <body>
@@ -2065,6 +2077,7 @@
     const BUBBLE_DISPLAY_MS = 5000;
     const BUBBLE_MAX_PER_MEMBER = 2;
     const shownBubbleMessageIds = new Set();
+    const recentlySentBubbleKeys = new Map();
     const REPORTS_LOCAL_KEY = "qqshow_chat_reported_message_ids_v1";
     const reportedMessageIds = new Set(readJSON(REPORTS_LOCAL_KEY, []));
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
@@ -2438,7 +2451,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（极速发送修复版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（气泡去重防闪版）。");
         return;
       }
 
@@ -2915,8 +2928,42 @@
       });
     }
 
+
+    function makeBubbleDedupeText(text) {
+      return String(text || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    }
+
+    function rememberOwnBubbleText(text) {
+      const clean = makeBubbleDedupeText(text);
+      if (!clean) return;
+      recentlySentBubbleKeys.set(clean, Date.now() + 12000);
+      if (recentlySentBubbleKeys.size > 80) {
+        const now = Date.now();
+        Array.from(recentlySentBubbleKeys.keys()).forEach(key => {
+          if ((recentlySentBubbleKeys.get(key) || 0) < now) recentlySentBubbleKeys.delete(key);
+        });
+      }
+    }
+
+    function shouldSkipDuplicateOwnBubble(message) {
+      if (!message || String(message.memberId || "") !== String(currentMemberId || "")) return false;
+      const clean = makeBubbleDedupeText(message.text);
+      if (!clean) return false;
+      const expiresAt = recentlySentBubbleKeys.get(clean) || 0;
+      if (expiresAt > Date.now()) {
+        recentlySentBubbleKeys.delete(clean);
+        return true;
+      }
+      recentlySentBubbleKeys.delete(clean);
+      return false;
+    }
+
     function showMessageBubbleOnce(message) {
       if (!message || isSystemMessage(message) || !message.memberId || !message.text) return;
+
+      // 自己发送时已经即时显示过气泡；服务器消息轮询回来时不要再弹第二次。
+      if (shouldSkipDuplicateOwnBubble(message)) return;
+
       const key = String(message.id || "") || (String(message.memberId) + "_" + String(message.createdAt || "") + "_" + String(message.text || ""));
       if (shownBubbleMessageIds.has(key)) return;
       shownBubbleMessageIds.add(key);
@@ -3057,7 +3104,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（极速发送修复版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（气泡去重防闪版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
@@ -3117,8 +3164,8 @@
 
       // 发送成功后的刷新放到后台做，不再让它影响“输入框清空”和发送结果。
       setTimeout(function () {
-        pollWorkerMembers({ forceRender: true }).catch(function () {});
-        loadMessages({ forceRender: true }).catch(function () {});
+        pollWorkerMembers().catch(function () {});
+        loadMessages().catch(function () {});
       }, 100);
 
       return result;
@@ -3386,6 +3433,7 @@
       appendMessage(localMessage);
       renderMessages();
       showBubble(currentMemberId, text);
+      rememberOwnBubbleText(text);
 
       try {
         await sendHttpMessage(text, { tempId: tempId });
