@@ -1451,6 +1451,11 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    .member .bubble-stack {
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
     @media (max-width: 760px) {
       .bubble-stack {
         top: 4px !important;
@@ -2034,6 +2039,8 @@
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
+    const BUBBLE_MAX_PER_MEMBER = 2;
+    const shownBubbleMessageIds = new Set();
     const REPORTS_LOCAL_KEY = "qqshow_chat_reported_message_ids_v1";
     const reportedMessageIds = new Set(readJSON(REPORTS_LOCAL_KEY, []));
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
@@ -2374,7 +2381,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（切房间清理版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（气泡5秒常驻房间版）。");
         return;
       }
 
@@ -2774,7 +2781,7 @@
       const bubbles = (activeBubblesByMember[memberId] || [])
         .map(normalizeBubbleItem)
         .filter(item => item.text && item.expiresAt > now)
-        .slice(-2);
+        .slice(-BUBBLE_MAX_PER_MEMBER);
       activeBubblesByMember[memberId] = bubbles;
       stack.innerHTML = bubbles.map(item => {
         return `<div class="bubble show" data-bubble-id="${escapeHTML(item.id)}">${escapeHTML(item.text)}</div>`;
@@ -2810,17 +2817,45 @@
         .map(normalizeBubbleItem)
         .filter(item => item.text && item.expiresAt > now);
       current.push(bubble);
-      const limited = current.slice(-2);
+      const limited = current.slice(-BUBBLE_MAX_PER_MEMBER);
       const keptIds = new Set(limited.map(item => item.id));
       (activeBubblesByMember[memberId] || []).map(normalizeBubbleItem).forEach(item => {
         if (!keptIds.has(item.id)) clearBubbleTimer(memberId, item.id);
       });
       activeBubblesByMember[memberId] = limited;
-      renderMemberBubbles(memberId);
+
+      let stack = null;
+      try {
+        stack = document.querySelector(`[data-bubbles="${CSS.escape(memberId)}"]`);
+      } catch (error) {
+        stack = null;
+      }
+
+      if (!stack) {
+        // 成员列表刚刷新时，气泡容器可能还没生成；先重绘房间，再延迟一帧补显示。
+        renderRoom();
+        requestAnimationFrame(function () {
+          renderMemberBubbles(memberId);
+        });
+      } else {
+        renderMemberBubbles(memberId);
+      }
+
       limited.forEach(item => {
         const delay = Math.max(0, item.expiresAt - Date.now());
         scheduleBubbleRemoval(memberId, item.id, delay);
       });
+    }
+
+    function showMessageBubbleOnce(message) {
+      if (!message || isSystemMessage(message) || !message.memberId || !message.text) return;
+      const key = String(message.id || "") || (String(message.memberId) + "_" + String(message.createdAt || "") + "_" + String(message.text || ""));
+      if (shownBubbleMessageIds.has(key)) return;
+      shownBubbleMessageIds.add(key);
+      if (shownBubbleMessageIds.size > 500) {
+        Array.from(shownBubbleMessageIds).slice(0, 200).forEach(id => shownBubbleMessageIds.delete(id));
+      }
+      showBubble(message.memberId, message.text);
     }
 
     function showLatestBubble() {
@@ -2846,13 +2881,27 @@
 
     async function loadMessages() {
       try {
+        const previousMaxId = Number(lastLoadedMessageId || 0);
         const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT);
-        messagesCache = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
-        lastLoadedMessageId = messagesCache.reduce((max, item) => {
+        const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
+        messagesCache = nextMessages;
+        const newMaxId = nextMessages.reduce((max, item) => {
           const id = Number(item.id);
           return Number.isFinite(id) && id > max ? id : max;
-        }, lastLoadedMessageId || 0);
+        }, previousMaxId || 0);
         renderMessages();
+
+        // 初次进入只恢复历史，不弹旧气泡；之后轮询到的新发言才弹气泡。
+        if (previousMaxId > 0) {
+          nextMessages.forEach(message => {
+            const id = Number(message.id || 0);
+            if (Number.isFinite(id) && id > previousMaxId) {
+              showMessageBubbleOnce(message);
+            }
+          });
+        }
+
+        lastLoadedMessageId = newMaxId;
       } catch (error) {
         console.error("读取 Cloudflare 历史消息失败", error);
         showSystemToast("历史消息读取失败，请检查 Worker 是否已部署成功。 ");
@@ -2931,7 +2980,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（切房间清理版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（气泡5秒常驻房间版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
@@ -2977,6 +3026,10 @@
         const message = normalizeWorkerMessage(result.message);
         appendMessage(message);
         renderMessages();
+        showMessageBubbleOnce(message);
+        const id = Number(message && message.id || 0);
+        if (Number.isFinite(id) && id > lastLoadedMessageId) lastLoadedMessageId = id;
+      } else {
         showBubble(currentMemberId, text);
       }
       await pollWorkerMembers();
@@ -3033,8 +3086,40 @@
     }
 
     async function heartbeat() {
-      if (!currentMemberId) return;
+      if (!currentMemberId || !currentRoomId) return;
       sendSocketPayload({ type: "ping" });
+
+      // HTTP 保活：电脑端/手机端只要页面还开着、没有点“退出聊天室”，就持续刷新 last_seen。
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+      const current = membersCache.find(member => member.id === currentMemberId);
+      const pos = clampStagePosition(
+        (current && current.pos) ||
+        (avatar && avatar.pos) ||
+        stagePositions[0]
+      );
+
+      try {
+        const data = await workerFetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_id: currentRoomId,
+            member_id: currentMemberId,
+            nickname: avatar && avatar.name ? avatar.name : (current && current.name ? current.name : "匿名小人"),
+            avatar: avatar ? {
+              id: avatar.id,
+              name: avatar.name,
+              gender: avatar.gender || "f",
+              layers: avatar.layers || []
+            } : {},
+            x: pos.left,
+            y: pos.top
+          })
+        });
+        if (data && data.members) applyWorkerMembers(data.members);
+      } catch (error) {
+        console.warn("聊天室保活失败", error);
+      }
     }
 
     async function saveCurrentMemberPosition(pos, positionIndex, options) {
