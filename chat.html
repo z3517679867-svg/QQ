@@ -1451,6 +1451,11 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    .member .bubble-stack {
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
     @media (max-width: 760px) {
       .bubble-stack {
         top: 4px !important;
@@ -1918,6 +1923,16 @@
       pointer-events: none !important;
     }
 
+  
+    @media (max-width: 760px) {
+      .member {
+        transition: left 0.08s ease, top 0.08s ease !important;
+      }
+      .chat-avatar img {
+        image-rendering: auto;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1954,7 +1969,7 @@
         <div class="side-actions">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装小屋</a>
           <button type="button" onclick="clearRoom()">退出聊天室</button>
-          <div class="hint">多人在线 Demo：每个背景对应一个独立房间，每个房间最多 12 人。</div>
+          <div class="hint">Cloudflare 实时聊天室测试版：每个背景对应一个独立房间，每个房间最多 12 人。</div>
         </div>
       </aside>
     </div>
@@ -1973,10 +1988,9 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = "https://jvqcdgbalurasirdgwsz.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1Ufl2198LFxRiTYzwvvp1g_tYJ0-bIJ";
+    const CHAT_API_BASE = "https://chat-api.loveofqshow.online";
+    const CHAT_WS_BASE = "wss://chat-api.loveofqshow.online/ws";
 
     const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
     const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
@@ -2000,11 +2014,17 @@
     let currentRoomKey = getSavedRoomKey();
     let currentRoomId = CHAT_ROOMS[currentRoomKey].id;
 
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      realtime: {
-        params: { eventsPerSecond: 8 }
-      }
-    });
+    let chatSocket = null;
+    let chatSocketReady = false;
+    let chatReconnectTimer = null;
+    let shouldReconnectSocket = true;
+    let lastJoinPayload = null;
+    let memberPollTimer = null;
+    let memberPollInFlight = false;
+    let messagePollInFlight = false;
+    let lastMembersRenderHash = "";
+    let lastMessagesRenderHash = "";
+    const MEMBER_POLL_INTERVAL_MS = 5000;
 
     const stagePositions = [
       { left: 18, top: 90 },
@@ -2028,11 +2048,13 @@
 
     let membersCache = [];
     let messagesCache = [];
-    const CHAT_HISTORY_FETCH_LIMIT = 20;
+    const CHAT_HISTORY_FETCH_LIMIT = 15;
     const CHAT_HISTORY_DISPLAY_LIMIT = 20; // 读取并渲染最近20条，消息栏固定高度约显示5行，可滚动查看
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
+    const BUBBLE_MAX_PER_MEMBER = 2;
+    const shownBubbleMessageIds = new Set();
     const REPORTS_LOCAL_KEY = "qqshow_chat_reported_message_ids_v1";
     const reportedMessageIds = new Set(readJSON(REPORTS_LOCAL_KEY, []));
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
@@ -2151,47 +2173,35 @@
     }
 
     async function getRoomActiveMemberCount(roomId, excludeId) {
-      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-      let query = supabaseClient
-        .from("room_members")
-        .select("id, nickname, avatar, last_seen")
-        .eq("room_id", roomId)
-        .gte("last_seen", since)
-        .limit(50);
-      if (excludeId) query = query.neq("id", excludeId);
-      const { data, error } = await query;
-      if (error) {
-        console.warn("读取房间人数失败", error);
-        return 0;
-      }
-      return (data || []).filter(isRenderableRoomMemberRow).length;
+      // Cloudflare Durable Object 会在连接时判断房间人数；前端这里只显示当前缓存人数。
+      return membersCache.filter(isRenderableRoomMember).length;
     }
 
     async function canEnterRoom(roomKey, options) {
-      const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
-      const config = CHAT_ROOMS[key];
-      const opts = options || {};
-      const count = await getRoomActiveMemberCount(config.id, currentMemberId || localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || "");
-      if (count >= CHAT_ROOM_LIMIT) {
-        if (!opts.silent) alert(config.name + "房间已满，最多只能进入 " + CHAT_ROOM_LIMIT + " 人。请稍后再试，或切换到另一个房间。");
-        return false;
-      }
+      // Cloudflare 后端会严格限制每房间最多 12 人。
       return true;
     }
 
     async function switchChatRoom(roomKey) {
       const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
       if (key === currentRoomKey) return;
-      const oldConfig = getCurrentRoomConfig();
-      const newConfig = CHAT_ROOMS[key];
+
+      const oldRoomId = currentRoomId;
+      const oldRoomName = getCurrentRoomConfig().name;
       const oldMember = membersCache.find(member => member.id === currentMemberId);
       const oldName = oldMember && oldMember.name ? oldMember.name : "用户";
 
-      const ok = await canEnterRoom(key);
-      if (!ok) return;
-
       if (currentMemberId) {
-        await sendSystemMessage(oldName + " 已退出" + oldConfig.name + "。", false);
+        await sendSystemMessage(oldName + " 已退出" + oldRoomName + "。", true);
+        try {
+          await workerFetch("/leave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ room_id: oldRoomId, member_id: currentMemberId })
+          });
+        } catch (error) {
+          console.warn("切换房间时清理旧房间在线成员失败", error);
+        }
       }
 
       membersCache = [];
@@ -2202,9 +2212,8 @@
       renderRoom();
       renderMessages();
       await resetRoomHistoryBaseline();
-      await joinRoom({ roomSwitch: true });
       await loadMessages();
-      await loadMembers();
+      await joinRoom({ roomSwitch: true });
     }
 
     function clampStagePosition(pos) {
@@ -2264,6 +2273,243 @@
         createdAt: row.created_at
       };
     }
+    function normalizeWorkerMessage(row) {
+      if (!row) return null;
+      const system = !row.member_id || row.nickname === "系统";
+      return {
+        id: row.id,
+        type: system ? "system" : "chat",
+        memberId: row.member_id,
+        name: row.nickname || (system ? "系统" : "匿名小人"),
+        text: row.content || "",
+        createdAt: row.created_at
+      };
+    }
+
+    function normalizeWorkerMember(item, index) {
+      const avatar = item && item.avatar && typeof item.avatar === "object" ? item.avatar : {};
+      const pos = clampStagePosition({ left: item.x, top: item.y });
+      return {
+        id: item.member_id || item.id,
+        name: item.nickname || avatar.name || "匿名小人",
+        gender: avatar.gender || "f",
+        layers: Array.isArray(avatar.layers) ? avatar.layers : [],
+        pos,
+        index,
+        backgroundKey: currentRoomKey,
+        lastSeen: item.joined_at || Date.now()
+      };
+    }
+
+    function getMembersRenderHash(members) {
+      return (members || []).map(member => {
+        const pos = member && member.pos ? member.pos : {};
+        const layers = Array.isArray(member && member.layers) ? member.layers.map(layer => layer && layer.src ? layer.src : "").join("|") : "";
+        return [
+          member && member.id,
+          member && member.name,
+          Math.round(Number(pos.left || 0) * 10) / 10,
+          Math.round(Number(pos.top || 0) * 10) / 10,
+          layers
+        ].join("~");
+      }).join("||");
+    }
+
+    function applyWorkerMembers(rawMembers, options) {
+      const opts = options || {};
+      const workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
+      const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
+        ? {
+            id: currentMemberId,
+            name: String(localAvatar.name || "匿名小人").slice(0, 12),
+            gender: localAvatar.gender || "f",
+            layers: localAvatar.layers || [],
+            pos: clampStagePosition(localAvatar.pos || stagePositions[0]),
+            index: 0,
+            backgroundKey: currentRoomKey,
+            lastSeen: Date.now()
+          }
+        : null;
+
+      if (localMember && !workerMembers.some(member => member.id === currentMemberId)) {
+        workerMembers.unshift(localMember);
+      }
+
+      const nextHash = getMembersRenderHash(workerMembers);
+      membersCache = workerMembers;
+      if (opts.forceRender || nextHash !== lastMembersRenderHash) {
+        lastMembersRenderHash = nextHash;
+        renderRoom();
+      }
+    }
+
+    async function pollWorkerMembers(options) {
+      if (!currentRoomId || memberPollInFlight) return;
+      memberPollInFlight = true;
+      try {
+        const data = await workerFetch("/members?room_id=" + encodeURIComponent(currentRoomId), null, 9000);
+        if (data && data.ok) {
+          applyWorkerMembers(data.members || [], options || {});
+        }
+      } catch (error) {
+        console.warn("读取在线成员失败", error);
+      } finally {
+        memberPollInFlight = false;
+      }
+    }
+
+    function startMemberPolling() {
+      stopMemberPolling();
+      pollWorkerMembers({ forceRender: true });
+      memberPollTimer = setInterval(function () { pollWorkerMembers(); }, MEMBER_POLL_INTERVAL_MS);
+    }
+
+    function stopMemberPolling() {
+      if (memberPollTimer) {
+        clearInterval(memberPollTimer);
+        memberPollTimer = null;
+      }
+    }
+
+    async function workerFetch(path, options, timeoutMs) {
+      const controller = new AbortController();
+      const timer = setTimeout(function () {
+        try { controller.abort(); } catch (error) {}
+      }, timeoutMs || 10000);
+
+      try {
+        const mergedOptions = Object.assign({ cache: "no-store" }, options || {});
+        mergedOptions.signal = controller.signal;
+        const response = await fetch(CHAT_API_BASE + path, mergedOptions);
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(text || ("HTTP " + response.status));
+        }
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function closeChatSocket() {
+      shouldReconnectSocket = false;
+      clearTimeout(chatReconnectTimer);
+      chatReconnectTimer = null;
+      if (chatSocket) {
+        try { chatSocket.close(); } catch (error) {}
+      }
+      chatSocket = null;
+      chatSocketReady = false;
+      stopMemberPolling();
+    }
+
+    function sendSocketPayload(payload) {
+      if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) return false;
+      chatSocket.send(JSON.stringify(payload || {}));
+      return true;
+    }
+
+    function handleSocketMessage(event) {
+      let data = null;
+      try {
+        data = JSON.parse(event.data);
+      } catch (error) {
+        return;
+      }
+
+      if (!data || !data.type) return;
+
+      if (data.type === "connected") {
+        chatSocketReady = true;
+        if (lastJoinPayload) {
+          sendSocketPayload(lastJoinPayload);
+          setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 300);
+          setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
+        }
+        startMemberPolling();
+        updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
+        return;
+      }
+
+      if (data.type === "members") {
+        applyWorkerMembers(data.members || []);
+        return;
+      }
+
+      if (data.type === "chat") {
+        const message = normalizeWorkerMessage(data.message);
+        if (appendMessage(message)) {
+          const numericId = Number(message.id);
+          if (Number.isFinite(numericId) && numericId > lastLoadedMessageId) lastLoadedMessageId = numericId;
+          renderMessages();
+          if (!isSystemMessage(message)) showBubble(message.memberId, message.text);
+        }
+        return;
+      }
+
+      if (data.type === "room_full") {
+        showSystemToast(data.message || "当前房间已满。每个房间最多 12 人。");
+        alert(data.message || "当前房间已满。每个房间最多 12 人。");
+        return;
+      }
+
+      if (data.type === "banned") {
+        showSystemToast(data.message || "当前账号已被禁言，无法发言。");
+        return;
+      }
+    }
+
+    function connectChatSocket(avatar, pos) {
+      closeChatSocket();
+      shouldReconnectSocket = true;
+      const params = new URLSearchParams({
+        room_id: currentRoomId,
+        member_id: currentMemberId,
+        nickname: String(avatar.name || "匿名小人").slice(0, 20),
+        x: String(pos.left),
+        y: String(pos.top)
+      });
+      const socketUrl = CHAT_WS_BASE + "?" + params.toString();
+      chatSocket = new WebSocket(socketUrl);
+
+      lastJoinPayload = {
+        type: "join",
+        nickname: String(avatar.name || "匿名小人").slice(0, 20),
+        avatar: {
+          id: avatar.id,
+          name: String(avatar.name || "匿名小人").slice(0, 20),
+          gender: avatar.gender || "f",
+          layers: avatar.layers || []
+        },
+        x: pos.left,
+        y: pos.top
+      };
+
+      chatSocket.addEventListener("open", function () {
+        chatSocketReady = true;
+        sendSocketPayload(lastJoinPayload);
+        sendSocketPayload({ type: "sync" });
+        startMemberPolling();
+      });
+      chatSocket.addEventListener("message", handleSocketMessage);
+      chatSocket.addEventListener("close", function () {
+        chatSocketReady = false;
+        if (shouldReconnectSocket && currentMemberId) {
+          clearTimeout(chatReconnectTimer);
+          chatReconnectTimer = setTimeout(function () {
+            const savedAvatar = readJSON(CHAT_AVATAR_KEY, null);
+            if (savedAvatar && savedAvatar.id === currentMemberId) {
+              const savedPos = savedAvatar.pos || pos;
+              connectChatSocket(savedAvatar, clampStagePosition(savedPos));
+            }
+          }, 2500);
+        }
+      });
+      chatSocket.addEventListener("error", function () {
+        showSystemToast("Cloudflare 聊天室连接异常，正在重试。");
+      });
+    }
 
     function appendMessage(message) {
       if (!message) return false;
@@ -2321,39 +2567,37 @@
       if (reasonInput === null) return;
       const reason = String(reasonInput || "不当言论").trim().slice(0, 80) || "不当言论";
 
-      const { error } = await supabaseClient
-        .from("chat_reports")
-        .insert({
-          room_id: currentRoomId,
-          message_id: String(message.id),
-          reported_member_id: message.memberId || null,
-          reported_nickname: message.name || "匿名用户",
-          reported_content: message.text || "",
-          reporter_member_id: reporter.id || null,
-          reporter_nickname: reporter.name || "匿名用户",
-          reason: reason
+      try {
+        const result = await workerFetch("/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_id: currentRoomId,
+            message_id: message.id,
+            reported_member_id: message.memberId || null,
+            reported_nickname: message.name || "匿名用户",
+            reported_content: message.text || "",
+            reporter_member_id: reporter.id || null,
+            reporter_nickname: reporter.name || "匿名用户",
+            reason: reason
+          })
         });
 
-      if (error) {
-        console.error("举报失败", error);
-        const msg = String(error.message || "");
-        if (msg.includes("duplicate") || msg.includes("unique")) {
-          reportedMessageIds.add(key);
-          saveReportedMessageIds();
-          renderMessages();
-          showSystemToast("你已经举报过这条消息。");
-        } else if (msg.includes("chat_reports")) {
-          showSystemToast("举报表还没创建，请先在 Supabase 运行举报 SQL。 ");
-        } else {
-          showSystemToast("举报失败，请稍后再试。");
-        }
-        return;
-      }
+        reportedMessageIds.add(key);
+        saveReportedMessageIds();
+        renderMessages();
 
-      reportedMessageIds.add(key);
-      saveReportedMessageIds();
-      renderMessages();
-      showSystemToast("举报已提交。累计 3 名不同用户举报后，系统会自动禁言 3 小时；重复达到举报阈值会永久禁言。 ");
+        if (result.action === "temporary_ban") {
+          showSystemToast("举报已提交。该用户已被自动禁言 3 小时。");
+        } else if (result.action === "permanent_ban") {
+          showSystemToast("举报已提交。该用户已被自动永久禁言。");
+        } else {
+          showSystemToast("举报已提交。累计 3 名不同用户举报后，系统会自动禁言。");
+        }
+      } catch (error) {
+        console.error("举报失败", error);
+        showSystemToast("举报失败，请稍后再试。");
+      }
     }
 
     window.reportMessageById = reportMessageById;
@@ -2584,7 +2828,7 @@
       const bubbles = (activeBubblesByMember[memberId] || [])
         .map(normalizeBubbleItem)
         .filter(item => item.text && item.expiresAt > now)
-        .slice(-2);
+        .slice(-BUBBLE_MAX_PER_MEMBER);
       activeBubblesByMember[memberId] = bubbles;
       stack.innerHTML = bubbles.map(item => {
         return `<div class="bubble show" data-bubble-id="${escapeHTML(item.id)}">${escapeHTML(item.text)}</div>`;
@@ -2620,17 +2864,45 @@
         .map(normalizeBubbleItem)
         .filter(item => item.text && item.expiresAt > now);
       current.push(bubble);
-      const limited = current.slice(-2);
+      const limited = current.slice(-BUBBLE_MAX_PER_MEMBER);
       const keptIds = new Set(limited.map(item => item.id));
       (activeBubblesByMember[memberId] || []).map(normalizeBubbleItem).forEach(item => {
         if (!keptIds.has(item.id)) clearBubbleTimer(memberId, item.id);
       });
       activeBubblesByMember[memberId] = limited;
-      renderMemberBubbles(memberId);
+
+      let stack = null;
+      try {
+        stack = document.querySelector(`[data-bubbles="${CSS.escape(memberId)}"]`);
+      } catch (error) {
+        stack = null;
+      }
+
+      if (!stack) {
+        // 成员列表刚刷新时，气泡容器可能还没生成；先重绘房间，再延迟一帧补显示。
+        renderRoom();
+        requestAnimationFrame(function () {
+          renderMemberBubbles(memberId);
+        });
+      } else {
+        renderMemberBubbles(memberId);
+      }
+
       limited.forEach(item => {
         const delay = Math.max(0, item.expiresAt - Date.now());
         scheduleBubbleRemoval(memberId, item.id, delay);
       });
+    }
+
+    function showMessageBubbleOnce(message) {
+      if (!message || isSystemMessage(message) || !message.memberId || !message.text) return;
+      const key = String(message.id || "") || (String(message.memberId) + "_" + String(message.createdAt || "") + "_" + String(message.text || ""));
+      if (shownBubbleMessageIds.has(key)) return;
+      shownBubbleMessageIds.add(key);
+      if (shownBubbleMessageIds.size > 500) {
+        Array.from(shownBubbleMessageIds).slice(0, 200).forEach(id => shownBubbleMessageIds.delete(id));
+      }
+      showBubble(message.memberId, message.text);
     }
 
     function showLatestBubble() {
@@ -2640,22 +2912,6 @@
     }
 
     async function loadMembers() {
-      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-      const { data, error } = await supabaseClient
-        .from("room_members")
-        .select("id, room_id, nickname, avatar, x, y, background_key, last_seen, created_at")
-        .eq("room_id", currentRoomId)
-        .gte("last_seen", since)
-        .order("created_at", { ascending: true })
-        .limit(CHAT_ROOM_LIMIT);
-
-      if (error) {
-        console.error("读取在线用户失败", error);
-        setStatus("数据库未初始化或权限未配置");
-        return;
-      }
-
-      membersCache = (data || []).map(normalizeMember).filter(isRenderableRoomMember);
       renderRoom();
     }
 
@@ -2670,28 +2926,41 @@
       renderMessages();
     }
 
-    async function loadMessages() {
-      let query = supabaseClient
-        .from("chat_messages")
-        .select("id, member_id, nickname, content, created_at")
-        .eq("room_id", currentRoomId)
-        .order("created_at", { ascending: false })
-        .limit(CHAT_HISTORY_FETCH_LIMIT);
+    async function loadMessages(options) {
+      if (!currentRoomId || messagePollInFlight) return;
+      messagePollInFlight = true;
+      try {
+        const previousMaxId = Number(lastLoadedMessageId || 0);
+        const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT, null, 9000);
+        const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
+        const nextHash = nextMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
+        messagesCache = nextMessages;
+        const newMaxId = nextMessages.reduce((max, item) => {
+          const id = Number(item.id);
+          return Number.isFinite(id) && id > max ? id : max;
+        }, previousMaxId || 0);
 
-      // 手机端和电脑端均恢复历史消息：不再按进入时间过滤旧消息。
-      const { data, error } = await query;
+        if ((options && options.forceRender) || nextHash !== lastMessagesRenderHash) {
+          lastMessagesRenderHash = nextHash;
+          renderMessages();
+        }
 
-      if (error) {
-        console.error("读取消息失败", error);
-        return;
+        // 初次进入只恢复历史，不弹旧气泡；之后轮询到的新发言才弹气泡。
+        if (previousMaxId > 0) {
+          nextMessages.forEach(message => {
+            const id = Number(message.id || 0);
+            if (Number.isFinite(id) && id > previousMaxId) {
+              showMessageBubbleOnce(message);
+            }
+          });
+        }
+
+        lastLoadedMessageId = newMaxId;
+      } catch (error) {
+        console.warn("读取 Cloudflare 历史消息失败", error);
+      } finally {
+        messagePollInFlight = false;
       }
-
-      messagesCache = (data || []).reverse().map(normalizeMessageRow);
-      lastLoadedMessageId = messagesCache.reduce((max, item) => {
-        const id = Number(item.id);
-        return Number.isFinite(id) && id > max ? id : max;
-      }, lastLoadedMessageId || 0);
-      renderMessages();
     }
 
 
@@ -2721,17 +2990,7 @@
     }
 
     async function cleanupOldMemberRows(currentId) {
-      const oldIds = readCleanupMemberIds().filter(id => id && id !== currentId);
-      if (!oldIds.length) return;
-      try {
-        await supabaseClient
-          .from("room_members")
-          .delete()
-          .in("id", oldIds.slice(0, 20));
-        localStorage.removeItem(CHAT_CLEANUP_MEMBER_IDS_KEY);
-      } catch (error) {
-        console.warn("清理旧在线角色失败，稍后会自动过期", error);
-      }
+      // Cloudflare Durable Object 使用 WebSocket 在线状态，不需要清理旧数据库在线行。
     }
 
     function getLocalAvatarForJoin() {
@@ -2751,6 +3010,88 @@
       return avatar;
     }
 
+    let httpMessagePollTimer = null;
+    let heartbeatTimer = null;
+    const HTTP_MESSAGE_POLL_INTERVAL_MS = 3000;
+
+    async function httpJoinRoom(avatar, pos) {
+      const response = await workerFetch("/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: currentRoomId,
+          member_id: currentMemberId,
+          nickname: String(avatar.name || "匿名小人").slice(0, 20),
+          avatar: {
+            id: avatar.id,
+            name: String(avatar.name || "匿名小人").slice(0, 20),
+            gender: avatar.gender || "f",
+            layers: avatar.layers || []
+          },
+          x: pos.left,
+          y: pos.top
+        })
+      });
+
+      if (response && response.members) {
+        applyWorkerMembers(response.members);
+      }
+      updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
+      startMemberPolling();
+      startMessagePolling();
+      return response;
+    }
+
+    function startMessagePolling() {
+      stopMessagePolling();
+      loadMessages({ forceRender: true });
+      httpMessagePollTimer = setInterval(function () { loadMessages(); }, HTTP_MESSAGE_POLL_INTERVAL_MS);
+    }
+
+    function stopMessagePolling() {
+      if (httpMessagePollTimer) {
+        clearInterval(httpMessagePollTimer);
+        httpMessagePollTimer = null;
+      }
+    }
+
+    async function sendHttpMessage(text) {
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+      const pos = avatar && avatar.pos ? clampStagePosition(avatar.pos) : { left: 50, top: 82 };
+
+      const result = await workerFetch("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: currentRoomId,
+          member_id: currentMemberId,
+          nickname: avatar && avatar.name ? avatar.name : "匿名小人",
+          avatar: avatar ? {
+            id: avatar.id,
+            name: avatar.name,
+            gender: avatar.gender || "f",
+            layers: avatar.layers || []
+          } : {},
+          content: text,
+          x: pos.left,
+          y: pos.top
+        })
+      });
+
+      if (result && result.message) {
+        const message = normalizeWorkerMessage(result.message);
+        appendMessage(message);
+        renderMessages();
+        showMessageBubbleOnce(message);
+        const id = Number(message && message.id || 0);
+        if (Number.isFinite(id) && id > lastLoadedMessageId) lastLoadedMessageId = id;
+      } else {
+        showBubble(currentMemberId, text);
+      }
+      await pollWorkerMembers({ forceRender: true });
+      await loadMessages({ forceRender: true });
+    }
+
     async function joinRoom(options) {
       const joinOptions = options || {};
       const avatar = getLocalAvatarForJoin();
@@ -2763,77 +3104,78 @@
       currentMemberId = avatar.id;
       localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, currentMemberId);
       localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, currentMemberId);
-      await cleanupOldMemberRows(currentMemberId);
-
-      const canEnter = await canEnterRoom(currentRoomKey, { silent: joinOptions.roomSwitch });
-      if (!canEnter) {
-        let fallbackKey = "";
-        for (const candidateKey of Object.keys(CHAT_ROOMS)) {
-          if (candidateKey === currentRoomKey) continue;
-          const fallbackOk = await canEnterRoom(candidateKey, { silent: true });
-          if (fallbackOk) {
-            fallbackKey = candidateKey;
-            break;
-          }
-        }
-
-        if (fallbackKey) {
-          alert(getCurrentRoomConfig().name + "房间已满，已为你切换到" + CHAT_ROOMS[fallbackKey].name + "。每个房间最多 " + CHAT_ROOM_LIMIT + " 人。");
-          applyChatRoom(fallbackKey);
-        } else {
-          alert("所有房间都已满，每个房间最多 " + CHAT_ROOM_LIMIT + " 人。请稍后再试。");
-          setStatus("当前房间已满");
-          return;
-        }
-      }
 
       const existingPos = avatar.pos || stagePositions[Math.floor(Math.random() * stagePositions.length)];
       const pos = clampStagePosition(existingPos);
+      avatar.pos = pos;
+      localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatar));
 
-      const payload = {
+      const localMember = {
         id: currentMemberId,
-        room_id: currentRoomId,
-        nickname: String(avatar.name || "").trim().slice(0, 12),
-        avatar: {
-          id: avatar.id,
-          name: String(avatar.name || "").trim().slice(0, 12),
-          gender: avatar.gender || "f",
-          layers: avatar.layers || []
-        },
-        x: pos.left,
-        y: pos.top,
-        background_key: currentRoomKey,
-        last_seen: new Date().toISOString()
+        name: String(avatar.name || "匿名小人").trim().slice(0, 12),
+        gender: avatar.gender || "f",
+        layers: avatar.layers || [],
+        pos,
+        index: 0,
+        backgroundKey: currentRoomKey,
+        lastSeen: new Date().toISOString()
       };
+      membersCache = [localMember].concat(membersCache.filter(member => member.id !== currentMemberId));
+      renderRoom();
 
-      const { error } = await supabaseClient
-        .from("room_members")
-        .upsert(payload, { onConflict: "id" });
-
-      if (error) {
-        console.error("进入房间失败", error);
-        alert("多人聊天室连接失败：请确认 Supabase SQL 已运行，并开启 Realtime。\n\n" + error.message);
-        return;
+      try {
+        await httpJoinRoom(avatar, pos);
+      } catch (error) {
+        console.error("HTTP 加入聊天室失败", error);
+        showSystemToast("聊天室连接失败，请刷新后重试。");
       }
 
-      await loadMembers();
       if (preserveHistoryReentry) {
-        showSystemToast(payload.nickname + " 已返回" + getCurrentRoomConfig().name + "，继续上次聊天。");
-      } else {
-        await sendSystemMessage("欢迎 " + payload.nickname + " 进入" + getCurrentRoomConfig().name + "。", false);
+        showSystemToast(localMember.name + " 已返回" + getCurrentRoomConfig().name + "，继续上次聊天。");
+      } else if (!joinOptions.roomSwitch) {
+        showSystemToast("欢迎 " + localMember.name + " 进入" + getCurrentRoomConfig().name + "。");
       }
-      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, payload.nickname);
+      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, localMember.name);
       localStorage.removeItem(CHAT_RETURN_REENTER_KEY);
       localStorage.removeItem(CHAT_PRESERVE_HISTORY_KEY);
       preserveHistoryReentry = false;
     }
 
     async function heartbeat() {
-      if (!currentMemberId) return;
-      await supabaseClient
-        .from("room_members")
-        .update({ last_seen: new Date().toISOString() })
-        .eq("id", currentMemberId);
+      if (!currentMemberId || !currentRoomId) return;
+      sendSocketPayload({ type: "ping" });
+
+      // HTTP 保活：电脑端/手机端只要页面还开着、没有点“退出聊天室”，就持续刷新 last_seen。
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+      const current = membersCache.find(member => member.id === currentMemberId);
+      const pos = clampStagePosition(
+        (current && current.pos) ||
+        (avatar && avatar.pos) ||
+        stagePositions[0]
+      );
+
+      try {
+        const data = await workerFetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_id: currentRoomId,
+            member_id: currentMemberId,
+            nickname: avatar && avatar.name ? avatar.name : (current && current.name ? current.name : "匿名小人"),
+            avatar: avatar ? {
+              id: avatar.id,
+              name: avatar.name,
+              gender: avatar.gender || "f",
+              layers: avatar.layers || []
+            } : {},
+            x: pos.left,
+            y: pos.top
+          })
+        });
+        if (data && data.members) applyWorkerMembers(data.members);
+      } catch (error) {
+        console.warn("聊天室保活失败", error);
+      }
     }
 
     async function saveCurrentMemberPosition(pos, positionIndex, options) {
@@ -2853,16 +3195,27 @@
       if (!opts.silent) showBubble(currentMemberId, opts.bubbleText || "我换了个位置~");
 
       const now = Date.now();
-      const doUpdate = async () => {
+      const doUpdate = () => {
         lastPositionUpdateAt = Date.now();
-        await supabaseClient
-          .from("room_members")
-          .update({ x: cleanPos.left, y: cleanPos.top, last_seen: new Date().toISOString() })
-          .eq("id", currentMemberId);
+        sendSocketPayload({ type: "move", x: cleanPos.left, y: cleanPos.top });
+        workerFetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_id: currentRoomId,
+            member_id: currentMemberId,
+            x: cleanPos.left,
+            y: cleanPos.top
+          })
+        }).then(function (data) {
+          if (data && data.members) applyWorkerMembers(data.members);
+        }).catch(function (error) {
+          console.warn("HTTP 位置同步失败", error);
+        });
       };
 
       if (now - lastPositionUpdateAt > 500 || !opts.skipRender) {
-        await doUpdate();
+        doUpdate();
       } else {
         clearTimeout(positionUpdateTimer);
         positionUpdateTimer = setTimeout(doUpdate, 520);
@@ -2952,29 +3305,9 @@
     async function sendSystemMessage(text, localOnly) {
       const cleanText = String(text || "").trim().slice(0, 120);
       if (!cleanText) return;
-
-      if (localOnly) {
-        appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
-        renderMessages();
-        showSystemToast(cleanText);
-        return;
-      }
-
-      const { error } = await supabaseClient
-        .from("chat_messages")
-        .insert({
-          room_id: currentRoomId,
-          member_id: null,
-          nickname: "系统",
-          content: cleanText
-        });
-
-      if (error) {
-        console.warn("系统消息发送失败，使用本地显示", error);
-        appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
-        renderMessages();
-        showSystemToast(cleanText);
-      }
+      appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
+      renderMessages();
+      showSystemToast(cleanText);
     }
 
     function getChatSendErrorMessage(error) {
@@ -3003,20 +3336,13 @@
       }
 
       input.value = "";
-      const { error } = await supabaseClient
-        .from("chat_messages")
-        .insert({
-          room_id: currentRoomId,
-          member_id: currentMember.id,
-          nickname: currentMember.name || "匿名小人",
-          content: text
-        });
 
-      if (error) {
-        console.error("发送失败", error);
+      try {
+        await sendHttpMessage(text);
+      } catch (error) {
+        console.error("HTTP 消息发送失败", error);
         input.value = text;
-        showSystemToast(getChatSendErrorMessage(error));
-        return;
+        showSystemToast("消息发送失败，请稍后再试。");
       }
     }
 
@@ -3024,13 +3350,22 @@
       if (!confirm("确定退出多人聊天室吗？你的角色会从当前房间移除。")) return;
       const current = membersCache.find(member => member.id === currentMemberId);
       const nickname = current && current.name ? current.name : "用户";
-      await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", false);
-      if (currentMemberId) {
-        await supabaseClient.from("room_members").delete().eq("id", currentMemberId);
-      }
+      await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", true);
+      try {
+        await workerFetch("/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_id: currentRoomId, member_id: currentMemberId })
+        });
+      } catch (error) {}
+      closeChatSocket();
+      stopMemberPolling();
+      stopMessagePolling();
+      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
       localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
       currentMemberId = "";
-      await loadMembers();
+      membersCache = [];
+      renderRoom();
     }
 
     function goBackToCottage(event) {
@@ -3053,35 +3388,7 @@
     }
 
     function setupRealtime() {
-      if (realtimeReady) return;
-      realtimeReady = true;
-
-      supabaseClient
-        .channel("retro-chatroom-rooms")
-        .on("postgres_changes", { event: "*", schema: "public", table: "room_members" }, async () => {
-          await loadMembers();
-        })
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, payload => {
-          if (!payload.new || payload.new.room_id !== currentRoomId) return;
-          const row = payload.new;
-          const message = normalizeMessageRow(row);
-          const messageIdNumber = Number(message.id);
-          if (Number.isFinite(messageIdNumber) && messageIdNumber <= roomEntryBaselineMessageId) return;
-          const isNewAfterInitialLoad = Number(message.id) > lastLoadedMessageId;
-          if (appendMessage(message)) {
-            const numericId = Number(message.id);
-            if (Number.isFinite(numericId) && numericId > lastLoadedMessageId) lastLoadedMessageId = numericId;
-            renderMessages();
-            if (isSystemMessage(message)) {
-              if (isNewAfterInitialLoad) showSystemToast(message.text);
-            } else if (isNewAfterInitialLoad) {
-              showBubble(message.memberId, message.text);
-            }
-          }
-        })
-        .subscribe(status => {
-          console.log("Supabase Realtime:", status);
-        });
+      // Cloudflare 版使用原生 WebSocket，不再连接 Supabase Realtime。
     }
 
     async function initOnlineChat() {
@@ -3090,17 +3397,38 @@
       renderRoom();
       renderMessages();
       await resetRoomHistoryBaseline({ preserve: preserveHistoryReentry });
-      setupRealtime();
-      await joinRoom();
       await loadMessages();
-      await loadMembers();
-      setInterval(heartbeat, 25000);
-      setInterval(loadMembers, 30000);
+      await joinRoom();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(heartbeat, 30000);
+      heartbeat();
     }
 
     window.addEventListener("beforeunload", function () {
-      heartbeat();
+      shouldReconnectSocket = false;
+      if (chatSocket) {
+        try { chatSocket.close(); } catch (error) {}
+      }
     });
+
+    function resumeMobileChatPolling() {
+      if (!currentMemberId) return;
+      heartbeat();
+      pollWorkerMembers({ forceRender: true });
+      loadMessages({ forceRender: true });
+      startMemberPolling();
+      startMessagePolling();
+    }
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) {
+        setTimeout(resumeMobileChatPolling, 300);
+      }
+    }, { passive: true });
+
+    window.addEventListener("pageshow", function () {
+      setTimeout(resumeMobileChatPolling, 300);
+    }, { passive: true });
 
     document.getElementById("messageInput").addEventListener("keydown", function (event) {
       if (event.key === "Enter" && !event.shiftKey) {
