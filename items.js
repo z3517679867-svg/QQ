@@ -1247,6 +1247,18 @@ window.ITEMS = {
     {
       "name": "万花幻境",
       "src": "assets/background/bg_300.gif"
+    },
+    {
+      "name": "万花书房",
+      "src": "assets/background/bg_301.gif"
+    },
+    {
+      "name": "万花回廊",
+      "src": "assets/background/bg_302.gif"
+    },
+    {
+      "name": "彩梦游园",
+      "src": "assets/background/bg_303.gif"
     }
   ],
   "front": [

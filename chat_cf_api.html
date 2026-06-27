@@ -1933,6 +1933,43 @@
       }
     }
 
+  
+    .log-line.pending {
+      opacity: 0.82;
+    }
+
+    @media (max-width: 760px) {
+      .member {
+        transition: left 0.06s ease, top 0.06s ease !important;
+      }
+    }
+  
+    /* bubble-dedupe-no-flash */
+    .chat-log,
+    .log-line,
+    .bubble-stack,
+    .member-bubble {
+      backface-visibility: hidden;
+    }
+
+    .log-line.pending {
+      opacity: 0.82;
+    }
+  
+    .visible-empty-avatar {
+      width: 54px;
+      height: 72px;
+      border: 2px dashed rgba(65, 86, 130, .55);
+      border-radius: 18px 18px 14px 14px;
+      background: rgba(255,255,255,.72);
+      color: #52617c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(60,70,100,.18);
+    }
   </style>
 </head>
 <body>
@@ -2024,7 +2061,14 @@
     let messagePollInFlight = false;
     let lastMembersRenderHash = "";
     let lastMessagesRenderHash = "";
-    const MEMBER_POLL_INTERVAL_MS = 5000;
+    let syncTimer = null;
+    let syncInFlight = false;
+    let lastUserActivityAt = Date.now();
+    const SYNC_ACTIVE_INTERVAL_MS = 3000;
+    const SYNC_IDLE_INTERVAL_MS = 10000;
+    const SYNC_DEEP_IDLE_INTERVAL_MS = 20000;
+    const SYNC_HIDDEN_INTERVAL_MS = 60000;
+    const MEMBER_POLL_INTERVAL_MS = 4500;
 
     const stagePositions = [
       { left: 18, top: 90 },
@@ -2049,12 +2093,13 @@
     let membersCache = [];
     let messagesCache = [];
     const CHAT_HISTORY_FETCH_LIMIT = 15;
-    const CHAT_HISTORY_DISPLAY_LIMIT = 20; // 读取并渲染最近20条，消息栏固定高度约显示5行，可滚动查看
+    const CHAT_HISTORY_DISPLAY_LIMIT = 15; // 只显示最近15条
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
     const BUBBLE_MAX_PER_MEMBER = 2;
     const shownBubbleMessageIds = new Set();
+    const recentlySentBubbleKeys = new Map();
     const REPORTS_LOCAL_KEY = "qqshow_chat_reported_message_ids_v1";
     const reportedMessageIds = new Set(readJSON(REPORTS_LOCAL_KEY, []));
     let currentMemberId = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
@@ -2148,20 +2193,18 @@
       if (!member) return false;
       if (member.npc) return false;
       const name = String(member.name || "").trim();
-      const layers = Array.isArray(member.layers) ? member.layers : [];
       if (!name) return false;
       if (isCategoryLikeNickname(name)) return false;
-      if (!hasRenderableAvatarLayers(layers)) return false;
+      // 不再因为素材图层为空或个别图片加载失败就隐藏用户。
+      // 否则会出现“能说话但看不到人”的情况。
       return true;
     }
 
     function isRenderableRoomMemberRow(row) {
       const avatar = row && row.avatar && typeof row.avatar === "object" ? row.avatar : {};
       const name = String((row && row.nickname) || avatar.name || "").trim();
-      const layers = Array.isArray(avatar.layers) ? avatar.layers : [];
       if (!name) return false;
       if (isCategoryLikeNickname(name)) return false;
-      if (!hasRenderableAvatarLayers(layers)) return false;
       return true;
     }
 
@@ -2317,7 +2360,8 @@
 
     function applyWorkerMembers(rawMembers, options) {
       const opts = options || {};
-      const workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      let workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
       const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
       const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
         ? {
@@ -2335,6 +2379,7 @@
       if (localMember && !workerMembers.some(member => member.id === currentMemberId)) {
         workerMembers.unshift(localMember);
       }
+      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
 
       const nextHash = getMembersRenderHash(workerMembers);
       membersCache = workerMembers;
@@ -2344,32 +2389,154 @@
       }
     }
 
-    async function pollWorkerMembers(options) {
-      if (!currentRoomId || memberPollInFlight) return;
-      memberPollInFlight = true;
+    function markChatActivity() {
+      lastUserActivityAt = Date.now();
+    }
+
+    function getSyncIntervalMs() {
+      if (document.hidden) return SYNC_HIDDEN_INTERVAL_MS;
+      const idleMs = Date.now() - lastUserActivityAt;
+      if (idleMs > 5 * 60 * 1000) return SYNC_DEEP_IDLE_INTERVAL_MS;
+      if (idleMs > 60 * 1000) return SYNC_IDLE_INTERVAL_MS;
+      return SYNC_ACTIVE_INTERVAL_MS;
+    }
+
+    function getCurrentSyncPayload(options) {
+      const opts = options || {};
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+      const current = membersCache.find(member => member.id === currentMemberId);
+      const pos = clampStagePosition(
+        (current && current.pos) ||
+        (avatar && avatar.pos) ||
+        stagePositions[0]
+      );
+
+      return {
+        room_id: currentRoomId,
+        member_id: currentMemberId,
+        nickname: avatar && avatar.name ? avatar.name : (current && current.name ? current.name : "匿名小人"),
+        avatar: avatar ? {
+          id: avatar.id,
+          name: avatar.name,
+          gender: avatar.gender || "f",
+          layers: avatar.layers || []
+        } : {},
+        x: pos.left,
+        y: pos.top,
+        after_id: Number(lastLoadedMessageId || 0),
+        include_history: Boolean(opts.forceHistory || opts.forceRender || !lastLoadedMessageId)
+      };
+    }
+
+    function applySyncMessages(rawMessages, options) {
+      const opts = options || {};
+      const previousMaxId = Number(lastLoadedMessageId || 0);
+      const nextMessages = (rawMessages || []).map(normalizeWorkerMessage).filter(Boolean);
+      let newMaxId = previousMaxId;
+
+      nextMessages.forEach(message => {
+        const id = Number(message.id || 0);
+        if (Number.isFinite(id) && id > newMaxId) newMaxId = id;
+      });
+
+      const shouldReplaceHistory = Boolean(opts.forceHistory || opts.fullHistory || previousMaxId <= 0 || !messagesCache.length);
+
+      if (shouldReplaceHistory) {
+        messagesCache = nextMessages.slice(-CHAT_HISTORY_FETCH_LIMIT);
+        const nextHash = messagesCache.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
+        if (opts.forceRender || nextHash !== lastMessagesRenderHash) {
+          lastMessagesRenderHash = nextHash;
+          renderMessages();
+        }
+      } else if (nextMessages.length) {
+        let changed = false;
+        nextMessages.forEach(message => {
+          const id = Number(message.id || 0);
+          if (id > previousMaxId && appendMessage(message)) {
+            changed = true;
+            showMessageBubbleOnce(message);
+          }
+        });
+        if (changed) {
+          messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
+          lastMessagesRenderHash = messagesCache.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
+          renderMessages();
+        }
+      }
+
+      if (Number.isFinite(newMaxId) && newMaxId > lastLoadedMessageId) {
+        lastLoadedMessageId = newMaxId;
+      }
+    }
+
+    async function syncRoom(options) {
+      if (!currentRoomId || !currentMemberId || syncInFlight) return;
+      syncInFlight = true;
       try {
-        const data = await workerFetch("/members?room_id=" + encodeURIComponent(currentRoomId), null, 9000);
-        if (data && data.ok) {
+        const payload = getCurrentSyncPayload(options || {});
+        const data = await workerFetch("/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }, 10000);
+
+        if (data && data.members) {
           applyWorkerMembers(data.members || [], options || {});
         }
+
+        if (data && data.messages) {
+          applySyncMessages(data.messages || [], {
+            forceRender: Boolean(options && options.forceRender),
+            forceHistory: Boolean(options && options.forceHistory),
+            fullHistory: Boolean(data.full_history)
+          });
+        }
+
+        const serverLastId = Number(data && data.last_message_id || 0);
+        if (Number.isFinite(serverLastId) && serverLastId > lastLoadedMessageId) {
+          lastLoadedMessageId = serverLastId;
+        }
       } catch (error) {
-        console.warn("读取在线成员失败", error);
+        console.warn("同步聊天室失败", error);
+        if (error && error.code === "room_full") {
+          showSystemToast("当前房间已满，每个房间最多 12 人。请换一个房间。");
+        }
       } finally {
-        memberPollInFlight = false;
+        syncInFlight = false;
       }
+    }
+
+    function scheduleNextSync() {
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(async function () {
+        await syncRoom();
+        scheduleNextSync();
+      }, getSyncIntervalMs());
+    }
+
+    function startSyncPolling() {
+      stopSyncPolling();
+      syncRoom({ forceRender: true, forceHistory: true });
+      scheduleNextSync();
+    }
+
+    function stopSyncPolling() {
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+      }
+    }
+
+    async function pollWorkerMembers(options) {
+      await syncRoom(options || {});
     }
 
     function startMemberPolling() {
-      stopMemberPolling();
-      pollWorkerMembers({ forceRender: true });
-      memberPollTimer = setInterval(function () { pollWorkerMembers(); }, MEMBER_POLL_INTERVAL_MS);
+      startSyncPolling();
     }
 
     function stopMemberPolling() {
-      if (memberPollTimer) {
-        clearInterval(memberPollTimer);
-        memberPollTimer = null;
-      }
+      stopSyncPolling();
     }
 
     async function workerFetch(path, options, timeoutMs) {
@@ -2383,13 +2550,26 @@
         mergedOptions.signal = controller.signal;
         const response = await fetch(CHAT_API_BASE + path, mergedOptions);
         if (!response.ok) {
+          let payload = null;
           const text = await response.text().catch(() => "");
-          throw new Error(text || ("HTTP " + response.status));
+          try { payload = text ? JSON.parse(text) : null; } catch (error) {}
+          const err = new Error((payload && payload.message) || text || ("HTTP " + response.status));
+          err.status = response.status;
+          err.code = payload && payload.error ? payload.error : "";
+          err.payload = payload;
+          throw err;
         }
         return await response.json();
       } finally {
         clearTimeout(timer);
       }
+    }
+
+    function getSendErrorMessage(error) {
+      if (error && error.code === "room_full") return "当前房间已满，每个房间最多 12 人。请换一个房间。";
+      if (error && error.code === "banned") return "当前账号已被禁言，无法发言。";
+      if (error && error.name === "AbortError") return "网络超时，请稍后再试。";
+      return (error && error.message) || "消息发送失败，请稍后再试。";
     }
 
     function closeChatSocket() {
@@ -2428,7 +2608,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（同步省请求版：/sync合并成员、消息和保活）。");
         return;
       }
 
@@ -2518,6 +2698,14 @@
       messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
       return true;
     }
+
+    function removeMessageById(messageId) {
+      const targetId = String(messageId || "");
+      const before = messagesCache.length;
+      messagesCache = messagesCache.filter(item => String(item.id || "") !== targetId);
+      return messagesCache.length !== before;
+    }
+
 
     function saveReportedMessageIds() {
       try {
@@ -2679,8 +2867,8 @@
 
       if (!layers.length) {
         const empty = document.createElement("div");
-        empty.className = "empty-avatar";
-        empty.innerText = member.npc ? "QQ" : "空形象";
+        empty.className = "empty-avatar visible-empty-avatar";
+        empty.innerText = member.npc ? "QQ" : "小人";
         return empty;
       }
 
@@ -2779,6 +2967,9 @@
         const reported = reportedMessageIds.has(messageId);
         const reportLabel = reported ? "已举报" : "举报";
         const disabledAttr = reported ? " disabled" : "";
+        if (message.localPending) {
+          return `<div class="log-line pending" data-message-id="${escapeHTML(messageId)}"><span class="log-content"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</span><button type="button" class="report-btn" disabled>发送中</button></div>`;
+        }
         return `<div class="log-line" data-message-id="${escapeHTML(messageId)}"><span class="log-content"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</span><button type="button" class="report-btn" onclick="reportMessageById('${escapeHTML(messageId)}')"${disabledAttr}>${reportLabel}</button></div>`;
       }).join("");
       log.scrollTop = log.scrollHeight;
@@ -2894,8 +3085,42 @@
       });
     }
 
+
+    function makeBubbleDedupeText(text) {
+      return String(text || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    }
+
+    function rememberOwnBubbleText(text) {
+      const clean = makeBubbleDedupeText(text);
+      if (!clean) return;
+      recentlySentBubbleKeys.set(clean, Date.now() + 12000);
+      if (recentlySentBubbleKeys.size > 80) {
+        const now = Date.now();
+        Array.from(recentlySentBubbleKeys.keys()).forEach(key => {
+          if ((recentlySentBubbleKeys.get(key) || 0) < now) recentlySentBubbleKeys.delete(key);
+        });
+      }
+    }
+
+    function shouldSkipDuplicateOwnBubble(message) {
+      if (!message || String(message.memberId || "") !== String(currentMemberId || "")) return false;
+      const clean = makeBubbleDedupeText(message.text);
+      if (!clean) return false;
+      const expiresAt = recentlySentBubbleKeys.get(clean) || 0;
+      if (expiresAt > Date.now()) {
+        recentlySentBubbleKeys.delete(clean);
+        return true;
+      }
+      recentlySentBubbleKeys.delete(clean);
+      return false;
+    }
+
     function showMessageBubbleOnce(message) {
       if (!message || isSystemMessage(message) || !message.memberId || !message.text) return;
+
+      // 自己发送时已经即时显示过气泡；服务器消息轮询回来时不要再弹第二次。
+      if (shouldSkipDuplicateOwnBubble(message)) return;
+
       const key = String(message.id || "") || (String(message.memberId) + "_" + String(message.createdAt || "") + "_" + String(message.text || ""));
       if (shownBubbleMessageIds.has(key)) return;
       shownBubbleMessageIds.add(key);
@@ -2927,40 +3152,7 @@
     }
 
     async function loadMessages(options) {
-      if (!currentRoomId || messagePollInFlight) return;
-      messagePollInFlight = true;
-      try {
-        const previousMaxId = Number(lastLoadedMessageId || 0);
-        const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT, null, 9000);
-        const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
-        const nextHash = nextMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
-        messagesCache = nextMessages;
-        const newMaxId = nextMessages.reduce((max, item) => {
-          const id = Number(item.id);
-          return Number.isFinite(id) && id > max ? id : max;
-        }, previousMaxId || 0);
-
-        if ((options && options.forceRender) || nextHash !== lastMessagesRenderHash) {
-          lastMessagesRenderHash = nextHash;
-          renderMessages();
-        }
-
-        // 初次进入只恢复历史，不弹旧气泡；之后轮询到的新发言才弹气泡。
-        if (previousMaxId > 0) {
-          nextMessages.forEach(message => {
-            const id = Number(message.id || 0);
-            if (Number.isFinite(id) && id > previousMaxId) {
-              showMessageBubbleOnce(message);
-            }
-          });
-        }
-
-        lastLoadedMessageId = newMaxId;
-      } catch (error) {
-        console.warn("读取 Cloudflare 历史消息失败", error);
-      } finally {
-        messagePollInFlight = false;
-      }
+      await syncRoom(Object.assign({ forceHistory: true }, options || {}));
     }
 
 
@@ -3012,7 +3204,7 @@
 
     let httpMessagePollTimer = null;
     let heartbeatTimer = null;
-    const HTTP_MESSAGE_POLL_INTERVAL_MS = 3000;
+    const HTTP_MESSAGE_POLL_INTERVAL_MS = 1500;
 
     async function httpJoinRoom(avatar, pos) {
       const response = await workerFetch("/join", {
@@ -3036,26 +3228,21 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
-      startMemberPolling();
-      startMessagePolling();
+      updateSystemLine("Cloudflare 聊天室已连接（同步省请求版：/sync合并成员、消息和保活）。");
+      startSyncPolling();
       return response;
     }
 
     function startMessagePolling() {
-      stopMessagePolling();
-      loadMessages({ forceRender: true });
-      httpMessagePollTimer = setInterval(function () { loadMessages(); }, HTTP_MESSAGE_POLL_INTERVAL_MS);
+      startSyncPolling();
     }
 
     function stopMessagePolling() {
-      if (httpMessagePollTimer) {
-        clearInterval(httpMessagePollTimer);
-        httpMessagePollTimer = null;
-      }
+      // 消息和在线成员已经合并到 /sync，同一个定时器由 stopMemberPolling 统一关闭。
     }
 
-    async function sendHttpMessage(text) {
+    async function sendHttpMessage(text, options) {
+      const sendOptions = options || {};
       const avatar = readJSON(CHAT_AVATAR_KEY, null);
       const pos = avatar && avatar.pos ? clampStagePosition(avatar.pos) : { left: 50, top: 82 };
 
@@ -3080,16 +3267,25 @@
 
       if (result && result.message) {
         const message = normalizeWorkerMessage(result.message);
+        if (sendOptions.tempId) removeMessageById(sendOptions.tempId);
         appendMessage(message);
         renderMessages();
-        showMessageBubbleOnce(message);
+
+        // 自己发送时，前端已经即时显示过气泡；这里不重复弹。其他用户仍会通过轮询看到气泡。
+        if (!sendOptions.tempId) showMessageBubbleOnce(message);
+
         const id = Number(message && message.id || 0);
         if (Number.isFinite(id) && id > lastLoadedMessageId) lastLoadedMessageId = id;
-      } else {
+      } else if (!sendOptions.tempId) {
         showBubble(currentMemberId, text);
       }
-      await pollWorkerMembers({ forceRender: true });
-      await loadMessages({ forceRender: true });
+
+      // 发送成功后的刷新放到后台做，不再让它影响“输入框清空”和发送结果。
+      setTimeout(function () {
+        syncRoom().catch(function () {});
+      }, 100);
+
+      return result;
     }
 
     async function joinRoom(options) {
@@ -3127,6 +3323,15 @@
         await httpJoinRoom(avatar, pos);
       } catch (error) {
         console.error("HTTP 加入聊天室失败", error);
+        if (error && error.code === "room_full") {
+          membersCache = membersCache.filter(member => member.id !== currentMemberId);
+          localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
+          currentMemberId = "";
+          renderRoom();
+          alert("当前房间已满，每个房间最多 12 人。请换一个房间。");
+          showSystemToast("当前房间已满，每个房间最多 12 人。");
+          return;
+        }
         showSystemToast("聊天室连接失败，请刷新后重试。");
       }
 
@@ -3143,282 +3348,22 @@
 
     async function heartbeat() {
       if (!currentMemberId || !currentRoomId) return;
-      sendSocketPayload({ type: "ping" });
-
-      // HTTP 保活：电脑端/手机端只要页面还开着、没有点“退出聊天室”，就持续刷新 last_seen。
-      const avatar = readJSON(CHAT_AVATAR_KEY, null);
-      const current = membersCache.find(member => member.id === currentMemberId);
-      const pos = clampStagePosition(
-        (current && current.pos) ||
-        (avatar && avatar.pos) ||
-        stagePositions[0]
-      );
-
-      try {
-        const data = await workerFetch("/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room_id: currentRoomId,
-            member_id: currentMemberId,
-            nickname: avatar && avatar.name ? avatar.name : (current && current.name ? current.name : "匿名小人"),
-            avatar: avatar ? {
-              id: avatar.id,
-              name: avatar.name,
-              gender: avatar.gender || "f",
-              layers: avatar.layers || []
-            } : {},
-            x: pos.left,
-            y: pos.top
-          })
-        });
-        if (data && data.members) applyWorkerMembers(data.members);
-      } catch (error) {
-        console.warn("聊天室保活失败", error);
-      }
+      await syncRoom();
     }
-
-    async function saveCurrentMemberPosition(pos, positionIndex, options) {
-      if (!currentMemberId) return;
-      const opts = options || {};
-      const cleanPos = clampStagePosition(pos);
-      const current = membersCache.find(member => member.id === currentMemberId);
-      if (current) current.pos = cleanPos;
-
-      const avatar = readJSON(CHAT_AVATAR_KEY, null);
-      if (avatar && avatar.id === currentMemberId) {
-        avatar.pos = cleanPos;
-        localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatar));
-      }
-
-      if (!opts.skipRender) renderRoom();
-      if (!opts.silent) showBubble(currentMemberId, opts.bubbleText || "我换了个位置~");
-
-      const now = Date.now();
-      const doUpdate = () => {
-        lastPositionUpdateAt = Date.now();
-        sendSocketPayload({ type: "move", x: cleanPos.left, y: cleanPos.top });
-        workerFetch("/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room_id: currentRoomId,
-            member_id: currentMemberId,
-            x: cleanPos.left,
-            y: cleanPos.top
-          })
-        }).then(function (data) {
-          if (data && data.members) applyWorkerMembers(data.members);
-        }).catch(function (error) {
-          console.warn("HTTP 位置同步失败", error);
-        });
-      };
-
-      if (now - lastPositionUpdateAt > 500 || !opts.skipRender) {
-        doUpdate();
-      } else {
-        clearTimeout(positionUpdateTimer);
-        positionUpdateTimer = setTimeout(doUpdate, 520);
-      }
-    }
-
-    function updateCurrentMemberVisualPosition(pos) {
-      if (!currentMemberId) return;
-      const cleanPos = clampStagePosition(pos);
-      const el = document.querySelector('.member.current[data-member-id="' + CSS.escape(currentMemberId) + '"]');
-      if (!el) return;
-      el.style.left = cleanPos.left + "%";
-      el.style.top = cleanPos.top + "%";
-    }
-
-    function moveCurrentMemberToClick(event) {
-      if (suppressNextStageClick) {
-        suppressNextStageClick = false;
-        return;
-      }
-      const stage = document.getElementById("roomStage");
-      if (!stage || !currentMemberId) return;
-      const pos = getStagePointerPosition(event);
-      if (!pos) return;
-      saveCurrentMemberPosition(pos, null, { silent: true });
-    }
-
-    function startCurrentMemberDrag(event) {
-      const members = getMembers();
-      const currentMember = members.find(member => member.id === currentMemberId);
-      if (!currentMember || currentMember.npc) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const memberEl = event.currentTarget;
-      memberEl.classList.add("dragging");
-      if (memberEl.setPointerCapture && event.pointerId !== undefined) {
-        try { memberEl.setPointerCapture(event.pointerId); } catch (error) {}
-      }
-      dragPositionState = {
-        id: currentMemberId,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        lastPos: getMemberPosition(currentMember, 0)
-      };
-    }
-
-    function dragCurrentMember(event) {
-      if (!dragPositionState) return;
-      if (dragPositionState.pointerId !== undefined && event.pointerId !== dragPositionState.pointerId) return;
-      const pos = getStagePointerPosition(event);
-      if (!pos) return;
-      const dx = Math.abs(event.clientX - dragPositionState.startX);
-      const dy = Math.abs(event.clientY - dragPositionState.startY);
-      if (dx > 3 || dy > 3) dragPositionState.moved = true;
-      dragPositionState.lastPos = pos;
-      updateCurrentMemberVisualPosition(pos);
-    }
-
-    function endCurrentMemberDrag(event) {
-      if (!dragPositionState) return;
-      if (dragPositionState.pointerId !== undefined && event.pointerId !== dragPositionState.pointerId) return;
-      const state = dragPositionState;
-      dragPositionState = null;
-      suppressNextStageClick = true;
-      document.querySelectorAll(".member.current.dragging").forEach(el => el.classList.remove("dragging"));
-      if (state.moved && state.lastPos) {
-        saveCurrentMemberPosition(state.lastPos, null, { silent: true });
-      }
-      setTimeout(() => { suppressNextStageClick = false; }, 0);
-    }
-
-    function setupStagePositionClick() {
-      const stage = document.getElementById("roomStage");
-      if (!stage || stage.dataset.positionClickReady === "1") return;
-      stage.dataset.positionClickReady = "1";
-      stage.addEventListener("click", moveCurrentMemberToClick);
-      stage.addEventListener("pointermove", dragCurrentMember, { passive: false });
-      stage.addEventListener("pointerup", endCurrentMemberDrag);
-      stage.addEventListener("pointercancel", endCurrentMemberDrag);
-      stage.addEventListener("pointerleave", function (event) {
-        if (dragPositionState) endCurrentMemberDrag(event);
-      });
-    }
-
-    async function sendSystemMessage(text, localOnly) {
-      const cleanText = String(text || "").trim().slice(0, 120);
-      if (!cleanText) return;
-      appendMessage({ id: "sys_" + Date.now(), type: "system", memberId: null, name: "系统", text: cleanText, createdAt: new Date().toISOString() });
-      renderMessages();
-      showSystemToast(cleanText);
-    }
-
-    function getChatSendErrorMessage(error) {
-      const raw = String((error && (error.message || error.details || error.hint || error.code)) || "");
-      if (/MEMBER_PERMANENT_BANNED/i.test(raw)) return "当前账号已被永久禁言，无法发言。";
-      if (/MEMBER_TEMP_BANNED/i.test(raw)) return "当前账号已被临时禁言 3 小时，暂时无法发言。";
-      if (/BANNED_WORD/i.test(raw)) return "消息包含违规内容，无法发送。";
-      if (/LINK_NOT_ALLOWED/i.test(raw)) return "消息包含链接，无法发送。";
-      if (/MESSAGE_TOO_LONG/i.test(raw)) return "消息太长，请控制在 80 字以内。";
-      if (/EMPTY_MESSAGE/i.test(raw)) return "不能发送空消息。";
-      return "消息发送失败，请稍后再试。";
-    }
-
-
-    async function sendMessage() {
-      const input = document.getElementById("messageInput");
-      if (!input) return;
-      const text = input.value.trim().replace(/\s+/g, " ").slice(0, 80);
-      if (!text) return;
-
-      const members = getMembers();
-      const currentMember = members.find(member => member.id === currentMemberId);
-      if (!currentMember || currentMember.npc) {
-        alert("请先从换装小屋进入聊天室。若已经进入，请刷新页面。 ");
-        return;
-      }
-
-      input.value = "";
-
-      try {
-        await sendHttpMessage(text);
-      } catch (error) {
-        console.error("HTTP 消息发送失败", error);
-        input.value = text;
-        showSystemToast("消息发送失败，请稍后再试。");
-      }
-    }
-
-    async function clearRoom() {
-      if (!confirm("确定退出多人聊天室吗？你的角色会从当前房间移除。")) return;
-      const current = membersCache.find(member => member.id === currentMemberId);
-      const nickname = current && current.name ? current.name : "用户";
-      await sendSystemMessage(nickname + " 已退出" + getCurrentRoomConfig().name + "。", true);
-      try {
-        await workerFetch("/leave", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room_id: currentRoomId, member_id: currentMemberId })
-        });
-      } catch (error) {}
-      closeChatSocket();
-      stopMemberPolling();
-      stopMessagePolling();
-      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-      localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
-      currentMemberId = "";
-      membersCache = [];
-      renderRoom();
-    }
-
-    function goBackToCottage(event) {
-      if (event && event.preventDefault) event.preventDefault();
-      rememberReturnToCottageSession();
-      try {
-        const ref = document.referrer || "";
-        if (ref) {
-          const refUrl = new URL(ref, window.location.href);
-          const here = new URL(window.location.href);
-          const refFile = (refUrl.pathname.split("/").pop() || "").toLowerCase();
-          if (refUrl.origin === here.origin && refFile.indexOf("chat") === -1) {
-            window.location.href = refUrl.href;
-            return false;
-          }
-        }
-      } catch (error) {}
-      window.location.href = "index.html";
-      return false;
-    }
-
-    function setupRealtime() {
-      // Cloudflare 版使用原生 WebSocket，不再连接 Supabase Realtime。
-    }
-
-    async function initOnlineChat() {
-      applyChatRoom(currentRoomKey);
-      setupStagePositionClick();
-      renderRoom();
-      renderMessages();
-      await resetRoomHistoryBaseline({ preserve: preserveHistoryReentry });
-      await loadMessages();
-      await joinRoom();
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      heartbeatTimer = setInterval(heartbeat, 30000);
-      heartbeat();
-    }
-
-    window.addEventListener("beforeunload", function () {
-      shouldReconnectSocket = false;
-      if (chatSocket) {
-        try { chatSocket.close(); } catch (error) {}
-      }
-    });
 
     function resumeMobileChatPolling() {
       if (!currentMemberId) return;
       heartbeat();
       pollWorkerMembers({ forceRender: true });
       loadMessages({ forceRender: true });
-      startMemberPolling();
-      startMessagePolling();
+      startSyncPolling();
     }
+
+
+    let chatActivityEventsInstalled = true;
+    ["pointerdown", "keydown", "touchstart"].forEach(function (eventName) {
+      window.addEventListener(eventName, markChatActivity, { passive: true });
+    });
 
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden) {
