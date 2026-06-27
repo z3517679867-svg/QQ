@@ -1933,6 +1933,16 @@
       }
     }
 
+  
+    .log-line.pending {
+      opacity: 0.82;
+    }
+
+    @media (max-width: 760px) {
+      .member {
+        transition: left 0.06s ease, top 0.06s ease !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -2024,7 +2034,7 @@
     let messagePollInFlight = false;
     let lastMembersRenderHash = "";
     let lastMessagesRenderHash = "";
-    const MEMBER_POLL_INTERVAL_MS = 5000;
+    const MEMBER_POLL_INTERVAL_MS = 4500;
 
     const stagePositions = [
       { left: 18, top: 90 },
@@ -2049,7 +2059,7 @@
     let membersCache = [];
     let messagesCache = [];
     const CHAT_HISTORY_FETCH_LIMIT = 15;
-    const CHAT_HISTORY_DISPLAY_LIMIT = 20; // 读取并渲染最近20条，消息栏固定高度约显示5行，可滚动查看
+    const CHAT_HISTORY_DISPLAY_LIMIT = 15; // 只显示最近15条
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
@@ -2428,7 +2438,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（极速发送修复版）。");
         return;
       }
 
@@ -2518,6 +2528,14 @@
       messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
       return true;
     }
+
+    function removeMessageById(messageId) {
+      const targetId = String(messageId || "");
+      const before = messagesCache.length;
+      messagesCache = messagesCache.filter(item => String(item.id || "") !== targetId);
+      return messagesCache.length !== before;
+    }
+
 
     function saveReportedMessageIds() {
       try {
@@ -2779,6 +2797,9 @@
         const reported = reportedMessageIds.has(messageId);
         const reportLabel = reported ? "已举报" : "举报";
         const disabledAttr = reported ? " disabled" : "";
+        if (message.localPending) {
+          return `<div class="log-line pending" data-message-id="${escapeHTML(messageId)}"><span class="log-content"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</span><button type="button" class="report-btn" disabled>发送中</button></div>`;
+        }
         return `<div class="log-line" data-message-id="${escapeHTML(messageId)}"><span class="log-content"><b>${escapeHTML(message.name)}：</b>${escapeHTML(message.text)}</span><button type="button" class="report-btn" onclick="reportMessageById('${escapeHTML(messageId)}')"${disabledAttr}>${reportLabel}</button></div>`;
       }).join("");
       log.scrollTop = log.scrollHeight;
@@ -3012,7 +3033,7 @@
 
     let httpMessagePollTimer = null;
     let heartbeatTimer = null;
-    const HTTP_MESSAGE_POLL_INTERVAL_MS = 3000;
+    const HTTP_MESSAGE_POLL_INTERVAL_MS = 1500;
 
     async function httpJoinRoom(avatar, pos) {
       const response = await workerFetch("/join", {
@@ -3036,7 +3057,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（历史15条稳定版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（极速发送修复版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
@@ -3055,7 +3076,8 @@
       }
     }
 
-    async function sendHttpMessage(text) {
+    async function sendHttpMessage(text, options) {
+      const sendOptions = options || {};
       const avatar = readJSON(CHAT_AVATAR_KEY, null);
       const pos = avatar && avatar.pos ? clampStagePosition(avatar.pos) : { left: 50, top: 82 };
 
@@ -3080,16 +3102,26 @@
 
       if (result && result.message) {
         const message = normalizeWorkerMessage(result.message);
+        if (sendOptions.tempId) removeMessageById(sendOptions.tempId);
         appendMessage(message);
         renderMessages();
-        showMessageBubbleOnce(message);
+
+        // 自己发送时，前端已经即时显示过气泡；这里不重复弹。其他用户仍会通过轮询看到气泡。
+        if (!sendOptions.tempId) showMessageBubbleOnce(message);
+
         const id = Number(message && message.id || 0);
         if (Number.isFinite(id) && id > lastLoadedMessageId) lastLoadedMessageId = id;
-      } else {
+      } else if (!sendOptions.tempId) {
         showBubble(currentMemberId, text);
       }
-      await pollWorkerMembers({ forceRender: true });
-      await loadMessages({ forceRender: true });
+
+      // 发送成功后的刷新放到后台做，不再让它影响“输入框清空”和发送结果。
+      setTimeout(function () {
+        pollWorkerMembers({ forceRender: true }).catch(function () {});
+        loadMessages({ forceRender: true }).catch(function () {});
+      }, 100);
+
+      return result;
     }
 
     async function joinRoom(options) {
@@ -3335,14 +3367,34 @@
         return;
       }
 
+      // 先清空输入框，避免手机端/慢网络下“已发出但字还留在框里”。
       input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus();
+
+      // 本机立即显示，不等网络返回，降低电脑端和手机端的发送延迟感。
+      const tempId = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+      const localMessage = {
+        id: tempId,
+        type: "chat",
+        memberId: currentMemberId,
+        name: currentMember.name || "匿名小人",
+        text: text,
+        createdAt: new Date().toISOString(),
+        localPending: true
+      };
+      appendMessage(localMessage);
+      renderMessages();
+      showBubble(currentMemberId, text);
 
       try {
-        await sendHttpMessage(text);
+        await sendHttpMessage(text, { tempId: tempId });
       } catch (error) {
         console.error("HTTP 消息发送失败", error);
-        input.value = text;
-        showSystemToast("消息发送失败，请稍后再试。");
+        removeMessageById(tempId);
+        renderMessages();
+        showSystemToast(getSendErrorMessage(error));
+        // 不自动把文字塞回输入框，避免误以为没有发送；失败时用户可重新输入。
       }
     }
 
