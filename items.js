@@ -1705,6 +1705,10 @@ window.ITEMS = {
       "src": "assets/hair_f/hair_21_back.gif"
     },
     {
+      "name": "夜航短发后",
+      "src": "assets/hair_f/hair_105_back.gif"
+    },
+    {
       "name": "彩梦偶发后",
       "src": "assets/hair_f/hair_185_back.gif"
     },
@@ -3200,6 +3204,62 @@ window.ITEMS = {
     {
       "name": "樱桃古裙",
       "src": "assets/clothes_f/cloth_431.gif"
+    },
+    {
+      "name": "雪绒洋装",
+      "src": "assets/clothes_f/cloth_432.gif"
+    },
+    {
+      "name": "琉璃水手",
+      "src": "assets/clothes_f/cloth_433.gif"
+    },
+    {
+      "name": "星屑睡衣",
+      "src": "assets/clothes_f/cloth_434.gif"
+    },
+    {
+      "name": "蝴蝶机车",
+      "src": "assets/clothes_f/cloth_435.gif"
+    },
+    {
+      "name": "绸缎乐队",
+      "src": "assets/clothes_f/cloth_436.gif"
+    },
+    {
+      "name": "礼盒舞裙",
+      "src": "assets/clothes_f/cloth_438.gif"
+    },
+    {
+      "name": "樱桃机车",
+      "src": "assets/clothes_f/cloth_439.gif"
+    },
+    {
+      "name": "花窗熊装",
+      "src": "assets/clothes_f/cloth_440.gif"
+    },
+    {
+      "name": "橱窗女仆",
+      "src": "assets/clothes_f/cloth_441.gif"
+    },
+    {
+      "name": "茶会学院",
+      "src": "assets/clothes_f/cloth_442.gif"
+    },
+    {
+      "name": "电波女仆",
+      "src": "assets/clothes_f/cloth_443.gif"
+    },
+    {
+      "name": "信笺侦探",
+      "src": "assets/clothes_f/cloth_444.gif"
+    },
+    {
+      "name": "邮票魔裙",
+      "src": "assets/clothes_f/cloth_445.gif"
+    },
+    {
+      "name": "橱窗洋装",
+      "src": "assets/clothes_f/cloth_446.gif"
     }
   ],
   "clothes_m": [
@@ -3630,6 +3690,22 @@ window.ITEMS = {
     {
       "name": "兔耳套装",
       "src": "assets/clothes_m/cloth_416.gif"
+    },
+    {
+      "name": "日记礼裙",
+      "src": "assets/clothes_m/cloth_417.gif"
+    },
+    {
+      "name": "珠光睡衣",
+      "src": "assets/clothes_m/cloth_418.gif"
+    },
+    {
+      "name": "月桂制服",
+      "src": "assets/clothes_m/cloth_419.gif"
+    },
+    {
+      "name": "云朵茶裙",
+      "src": "assets/clothes_m/cloth_420.gif"
     }
   ],
   "bottom": [
@@ -3830,6 +3906,14 @@ window.ITEMS = {
     {
       "name": "幻糖动裤",
       "src": "assets/bottom_f/bottom_032.gif"
+    },
+    {
+      "name": "彩梦鱼裙",
+      "src": "assets/bottom_f/bottom_033.gif"
+    },
+    {
+      "name": "霓虹花裙",
+      "src": "assets/bottom_f/bottom_034.gif"
     }
   ],
   "bottom_m": [
@@ -4124,6 +4208,30 @@ window.ITEMS = {
     {
       "name": "万花围肩",
       "src": "assets/top_f/top_047.gif"
+    },
+    {
+      "name": "霓虹上衣",
+      "src": "assets/top_f/top_048.gif"
+    },
+    {
+      "name": "流彩纱衣",
+      "src": "assets/top_f/top_049.gif"
+    },
+    {
+      "name": "幻彩夹克",
+      "src": "assets/top_f/top_050.gif"
+    },
+    {
+      "name": "珠光背心",
+      "src": "assets/top_f/top_051.gif"
+    },
+    {
+      "name": "幻糖长袖",
+      "src": "assets/top_f/top_052.gif"
+    },
+    {
+      "name": "虹光蕾衫",
+      "src": "assets/top_f/top_053.gif"
     }
   ],
   "top_m": [
@@ -5508,8 +5616,8 @@ window.ITEMS = {
       "src": "assets/hair_f/hair_104.gif"
     },
     {
-      "name": "蝴蝶睡发",
-      "src": "assets/hair_f/hair_105.gif"
+      "name": "夜航短发",
+      "src": "assets/hair_f/hair_105_front.gif"
     },
     {
       "name": "糖果马尾",
@@ -5850,6 +5958,10 @@ window.ITEMS = {
     {
       "name": "剧院睡发",
       "src": "assets/hair_f/hair_223.gif"
+    },
+    {
+      "name": "礼盒公主",
+      "src": "assets/hair_f/hair_224.gif"
     },
     {
       "name": "珠光绒发",
@@ -6574,6 +6686,18 @@ window.ITEMS = {
     {
       "name": "万花头饰",
       "src": "assets/hat/hat_123.gif"
+    },
+    {
+      "name": "彩梦发箍",
+      "src": "assets/hat/hat_124.gif"
+    },
+    {
+      "name": "幻彩兔帽",
+      "src": "assets/hat/hat_125.gif"
+    },
+    {
+      "name": "彩梦睡帽",
+      "src": "assets/hat/hat_126.gif"
     }
   ],
   "glasses": [
