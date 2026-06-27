@@ -1259,6 +1259,74 @@ window.ITEMS = {
     {
       "name": "彩梦游园",
       "src": "assets/background/bg_303.gif"
+    },
+    {
+      "name": "霓虹天幕",
+      "src": "assets/background/bg_304.gif"
+    },
+    {
+      "name": "万花店铺",
+      "src": "assets/background/bg_305.gif"
+    },
+    {
+      "name": "万花阁楼",
+      "src": "assets/background/bg_305、.gif"
+    },
+    {
+      "name": "幻彩街角",
+      "src": "assets/background/bg_306.gif"
+    },
+    {
+      "name": "万花云阶",
+      "src": "assets/background/bg_307.gif"
+    },
+    {
+      "name": "万花小屋",
+      "src": "assets/background/bg_308.gif"
+    },
+    {
+      "name": "糖果幻境",
+      "src": "assets/background/bg_309.gif"
+    },
+    {
+      "name": "霓虹游园",
+      "src": "assets/background/bg_400.gif"
+    },
+    {
+      "name": "虹光月台",
+      "src": "assets/background/bg_401.gif"
+    },
+    {
+      "name": "万花夜市",
+      "src": "assets/background/bg_402.gif"
+    },
+    {
+      "name": "虹光车站",
+      "src": "assets/background/bg_403.gif"
+    },
+    {
+      "name": "幻糖回廊",
+      "src": "assets/background/bg_404.gif"
+    },
+    {
+      "name": "霓虹茶室",
+      "src": "assets/background/bg_405.gif"
+    },
+    {
+      "name": "幻彩书房",
+      "src": "assets/background/bg_406.gif"
+    },
+    {
+      "name": "星爆阁楼",
+      "src": "assets/background/bg_407.gif"
+    },
+    {
+      "name": "幻糖舞厅",
+      "src": "assets/background/bg_408.gif"
+    },
+    {
+      "name": "糖果回廊",
+      "src": "assets/background/bg_409.gif"
     }
   ],
   "front": [
@@ -3128,6 +3196,10 @@ window.ITEMS = {
     {
       "name": "唱片学院",
       "src": "assets/clothes_f/cloth_430.gif"
+    },
+    {
+      "name": "樱桃古裙",
+      "src": "assets/clothes_f/cloth_431.gif"
     }
   ],
   "clothes_m": [
@@ -5772,6 +5844,14 @@ window.ITEMS = {
       "src": "assets/hair_f/hair_221.gif"
     },
     {
+      "name": "航线绒发",
+      "src": "assets/hair_f/hair_222.gif"
+    },
+    {
+      "name": "剧院睡发",
+      "src": "assets/hair_f/hair_223.gif"
+    },
+    {
       "name": "珠光绒发",
       "src": "assets/hair_f/3432.gif"
     },
@@ -7022,6 +7102,18 @@ window.ITEMS = {
       "src": "assets/effect/27.gif"
     },
     {
+      "name": "幻彩特效",
+      "src": "assets/effect/28.gif"
+    },
+    {
+      "name": "流彩彩带",
+      "src": "assets/effect/29.gif"
+    },
+    {
+      "name": "万花亮片",
+      "src": "assets/effect/30.gif"
+    },
+    {
       "name": "流彩花火",
       "src": "assets/effect/231.gif"
     }
@@ -7800,6 +7892,10 @@ window.ITEMS = {
     {
       "name": "珠光留言",
       "src": "assets/text/text_137.gif"
+    },
+    {
+      "name": "幻糖问候",
+      "src": "assets/text/text_138.gif"
     },
     {
       "name": "流彩标题",
