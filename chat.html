@@ -1955,6 +1955,21 @@
     .log-line.pending {
       opacity: 0.82;
     }
+  
+    .visible-empty-avatar {
+      width: 54px;
+      height: 72px;
+      border: 2px dashed rgba(65, 86, 130, .55);
+      border-radius: 18px 18px 14px 14px;
+      background: rgba(255,255,255,.72);
+      color: #52617c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(60,70,100,.18);
+    }
   </style>
 </head>
 <body>
@@ -2171,20 +2186,18 @@
       if (!member) return false;
       if (member.npc) return false;
       const name = String(member.name || "").trim();
-      const layers = Array.isArray(member.layers) ? member.layers : [];
       if (!name) return false;
       if (isCategoryLikeNickname(name)) return false;
-      if (!hasRenderableAvatarLayers(layers)) return false;
+      // 不再因为素材图层为空或个别图片加载失败就隐藏用户。
+      // 否则会出现“能说话但看不到人”的情况。
       return true;
     }
 
     function isRenderableRoomMemberRow(row) {
       const avatar = row && row.avatar && typeof row.avatar === "object" ? row.avatar : {};
       const name = String((row && row.nickname) || avatar.name || "").trim();
-      const layers = Array.isArray(avatar.layers) ? avatar.layers : [];
       if (!name) return false;
       if (isCategoryLikeNickname(name)) return false;
-      if (!hasRenderableAvatarLayers(layers)) return false;
       return true;
     }
 
@@ -2340,7 +2353,8 @@
 
     function applyWorkerMembers(rawMembers, options) {
       const opts = options || {};
-      const workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      let workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
+      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
       const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
       const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
         ? {
@@ -2358,6 +2372,7 @@
       if (localMember && !workerMembers.some(member => member.id === currentMemberId)) {
         workerMembers.unshift(localMember);
       }
+      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
 
       const nextHash = getMembersRenderHash(workerMembers);
       membersCache = workerMembers;
@@ -2406,13 +2421,26 @@
         mergedOptions.signal = controller.signal;
         const response = await fetch(CHAT_API_BASE + path, mergedOptions);
         if (!response.ok) {
+          let payload = null;
           const text = await response.text().catch(() => "");
-          throw new Error(text || ("HTTP " + response.status));
+          try { payload = text ? JSON.parse(text) : null; } catch (error) {}
+          const err = new Error((payload && payload.message) || text || ("HTTP " + response.status));
+          err.status = response.status;
+          err.code = payload && payload.error ? payload.error : "";
+          err.payload = payload;
+          throw err;
         }
         return await response.json();
       } finally {
         clearTimeout(timer);
       }
+    }
+
+    function getSendErrorMessage(error) {
+      if (error && error.code === "room_full") return "当前房间已满，每个房间最多 12 人。请换一个房间。";
+      if (error && error.code === "banned") return "当前账号已被禁言，无法发言。";
+      if (error && error.name === "AbortError") return "网络超时，请稍后再试。";
+      return (error && error.message) || "消息发送失败，请稍后再试。";
     }
 
     function closeChatSocket() {
@@ -2451,7 +2479,7 @@
           setTimeout(function () { sendSocketPayload({ type: "sync" }); }, 1200);
         }
         startMemberPolling();
-        updateSystemLine("Cloudflare 聊天室已连接（气泡去重防闪版）。");
+        updateSystemLine("Cloudflare 聊天室已连接（12人显示修复版）。");
         return;
       }
 
@@ -2710,8 +2738,8 @@
 
       if (!layers.length) {
         const empty = document.createElement("div");
-        empty.className = "empty-avatar";
-        empty.innerText = member.npc ? "QQ" : "空形象";
+        empty.className = "empty-avatar visible-empty-avatar";
+        empty.innerText = member.npc ? "QQ" : "小人";
         return empty;
       }
 
@@ -3104,7 +3132,7 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（气泡去重防闪版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（12人显示修复版）。");
       startMemberPolling();
       startMessagePolling();
       return response;
@@ -3206,6 +3234,15 @@
         await httpJoinRoom(avatar, pos);
       } catch (error) {
         console.error("HTTP 加入聊天室失败", error);
+        if (error && error.code === "room_full") {
+          membersCache = membersCache.filter(member => member.id !== currentMemberId);
+          localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
+          currentMemberId = "";
+          renderRoom();
+          alert("当前房间已满，每个房间最多 12 人。请换一个房间。");
+          showSystemToast("当前房间已满，每个房间最多 12 人。");
+          return;
+        }
         showSystemToast("聊天室连接失败，请刷新后重试。");
       }
 
@@ -3254,6 +3291,9 @@
         if (data && data.members) applyWorkerMembers(data.members);
       } catch (error) {
         console.warn("聊天室保活失败", error);
+        if (error && error.code === "room_full") {
+          showSystemToast("当前房间已满，你没有进入成功。请换一个房间。");
+        }
       }
     }
 
