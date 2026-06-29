@@ -3308,6 +3308,42 @@ window.ITEMS = {
     {
       "name": "香槟衣裙",
       "src": "assets/clothes_f/cloth_452.gif"
+    },
+    {
+      "name": "银河毛装",
+      "src": "assets/clothes_f/cloth_453.gif"
+    },
+    {
+      "name": "烟火哥裙",
+      "src": "assets/clothes_f/cloth_454.gif"
+    },
+    {
+      "name": "猫眼毛装",
+      "src": "assets/clothes_f/cloth_455.gif"
+    },
+    {
+      "name": "香水机车",
+      "src": "assets/clothes_f/cloth_456.gif"
+    },
+    {
+      "name": "兔耳兔装",
+      "src": "assets/clothes_f/cloth_457.gif"
+    },
+    {
+      "name": "玫瑰女仆",
+      "src": "assets/clothes_f/cloth_458.gif"
+    },
+    {
+      "name": "花火茶裙",
+      "src": "assets/clothes_f/cloth_459.gif"
+    },
+    {
+      "name": "玫瑰派装",
+      "src": "assets/clothes_f/cloth_460.gif"
+    },
+    {
+      "name": "烛光水手",
+      "src": "assets/clothes_f/cloth_461.gif"
     }
   ],
   "clothes_m": [
@@ -3774,6 +3810,18 @@ window.ITEMS = {
     {
       "name": "橱窗学院",
       "src": "assets/clothes_m/cloth_425.gif"
+    },
+    {
+      "name": "月桂古裙",
+      "src": "assets/clothes_m/cloth_426.gif"
+    },
+    {
+      "name": "茶会女仆",
+      "src": "assets/clothes_m/cloth_427.gif"
+    },
+    {
+      "name": "徽章制服",
+      "src": "assets/clothes_m/cloth_428.gif"
     }
   ],
   "bottom": [
@@ -6794,6 +6842,22 @@ window.ITEMS = {
     {
       "name": "彩梦睡帽",
       "src": "assets/hat/hat_126.gif"
+    },
+    {
+      "name": "流彩猫耳",
+      "src": "assets/hat/hat_127.gif"
+    },
+    {
+      "name": "幻彩巫帽",
+      "src": "assets/hat/hat_128.gif"
+    },
+    {
+      "name": "虹光兔帽",
+      "src": "assets/hat/hat_129.gif"
+    },
+    {
+      "name": "流彩巫帽",
+      "src": "assets/hat/hat_130.gif"
     }
   ],
   "glasses": [
