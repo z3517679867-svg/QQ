@@ -6348,6 +6348,10 @@ window.ITEMS = {
     {
       "name": "雪绒层发",
       "src": "assets/hair_m/hair_190.gif"
+    },
+    {
+      "name": "银河发尾",
+      "src": "assets/hair_m/hair_191.gif"
     }
   ],
   "hat": [
@@ -7130,6 +7134,10 @@ window.ITEMS = {
     {
       "name": "虹光圆坠",
       "src": "assets/earring/38.gif"
+    },
+    {
+      "name": "彩梦珠坠",
+      "src": "assets/earring/39.gif"
     }
   ],
   "face": [
