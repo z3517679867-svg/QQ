@@ -4672,6 +4672,10 @@ window.ITEMS = {
     {
       "name": "幻彩微笑",
       "src": "assets/body/body_041.gif"
+    },
+    {
+      "name": "珠光暖肤",
+      "src": "assets/body/body_042.gif"
     }
   ],
   "neck": [
