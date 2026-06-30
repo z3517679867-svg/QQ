@@ -1633,6 +1633,10 @@ window.ITEMS = {
       "src": "assets/wing/14.gif"
     },
     {
+      "name": "霓虹星羽",
+      "src": "assets/wing/15.gif"
+    },
+    {
       "name": "幻彩光翼",
       "src": "assets/wing/20.gif"
     },
@@ -1819,6 +1823,50 @@ window.ITEMS = {
     {
       "name": "绒球长发后",
       "src": "assets/hair_f/hair_218_back.gif"
+    },
+    {
+      "name": "风铃院发后",
+      "src": "assets/hair_f/hair_230_back.gif"
+    },
+    {
+      "name": "茶会卷发后",
+      "src": "assets/hair_f/hair_231_back.gif"
+    },
+    {
+      "name": "玫瑰发辫后",
+      "src": "assets/hair_f/hair_232_back.gif"
+    },
+    {
+      "name": "蕾丝长发后",
+      "src": "assets/hair_f/hair_233_back.gif"
+    },
+    {
+      "name": "软糖发辫后",
+      "src": "assets/hair_f/hair_234_back.gif"
+    },
+    {
+      "name": "风铃马尾后",
+      "src": "assets/hair_f/hair_235_back.gif"
+    },
+    {
+      "name": "童话层发后",
+      "src": "assets/hair_f/hair_236_back.gif"
+    },
+    {
+      "name": "闪片发尾后",
+      "src": "assets/hair_f/hair_238_back.gif"
+    },
+    {
+      "name": "银河侧发后",
+      "src": "assets/hair_f/hair_239_back.gif"
+    },
+    {
+      "name": "日记披发后",
+      "src": "assets/hair_f/hair_240_back.gif"
+    },
+    {
+      "name": "烛光公主后",
+      "src": "assets/hair_f/hair_241_back.gif"
     }
   ],
   "hair_back_m": [
@@ -3822,6 +3870,42 @@ window.ITEMS = {
     {
       "name": "徽章制服",
       "src": "assets/clothes_m/cloth_428.gif"
+    },
+    {
+      "name": "书页偶像",
+      "src": "assets/clothes_m/cloth_429.gif"
+    },
+    {
+      "name": "烟火斗篷",
+      "src": "assets/clothes_m/cloth_430.gif"
+    },
+    {
+      "name": "蓝莓公主",
+      "src": "assets/clothes_m/cloth_431.gif"
+    },
+    {
+      "name": "玻璃偶像",
+      "src": "assets/clothes_m/cloth_432.gif"
+    },
+    {
+      "name": "琉璃套装",
+      "src": "assets/clothes_m/cloth_433.gif"
+    },
+    {
+      "name": "蝴蝶熊装",
+      "src": "assets/clothes_m/cloth_434.gif"
+    },
+    {
+      "name": "电波运动",
+      "src": "assets/clothes_m/cloth_435.gif"
+    },
+    {
+      "name": "糖纸斗篷",
+      "src": "assets/clothes_m/cloth_436.gif"
+    },
+    {
+      "name": "软糖舞裙",
+      "src": "assets/clothes_m/cloth_437.gif"
     }
   ],
   "bottom": [
@@ -6112,6 +6196,202 @@ window.ITEMS = {
       "src": "assets/hair_f/hair_229.gif"
     },
     {
+      "name": "风铃院发",
+      "src": "assets/hair_f/hair_230_front.gif"
+    },
+    {
+      "name": "茶会卷发",
+      "src": "assets/hair_f/hair_231_front.gif"
+    },
+    {
+      "name": "玫瑰发辫",
+      "src": "assets/hair_f/hair_232_front.gif"
+    },
+    {
+      "name": "蕾丝长发",
+      "src": "assets/hair_f/hair_233_front.gif"
+    },
+    {
+      "name": "软糖发辫",
+      "src": "assets/hair_f/hair_234_front.gif"
+    },
+    {
+      "name": "风铃马尾",
+      "src": "assets/hair_f/hair_235_front.gif"
+    },
+    {
+      "name": "童话层发",
+      "src": "assets/hair_f/hair_236_front.gif"
+    },
+    {
+      "name": "花束挑染",
+      "src": "assets/hair_f/hair_237.gif"
+    },
+    {
+      "name": "闪片发尾",
+      "src": "assets/hair_f/hair_238_front.gif"
+    },
+    {
+      "name": "银河侧发",
+      "src": "assets/hair_f/hair_239_front.gif"
+    },
+    {
+      "name": "日记披发",
+      "src": "assets/hair_f/hair_240_front.gif"
+    },
+    {
+      "name": "烛光公主",
+      "src": "assets/hair_f/hair_241_front.gif"
+    },
+    {
+      "name": "丝带长发",
+      "src": "assets/hair_f/hair_243.gif"
+    },
+    {
+      "name": "夜航马尾",
+      "src": "assets/hair_f/hair_244.gif"
+    },
+    {
+      "name": "绒球短发",
+      "src": "assets/hair_f/hair_2026.gif"
+    },
+    {
+      "name": "塔楼波头",
+      "src": "assets/hair_f/hair_2027.gif"
+    },
+    {
+      "name": "丝带挑染",
+      "src": "assets/hair_f/hair_2028.gif"
+    },
+    {
+      "name": "小熊波头",
+      "src": "assets/hair_f/hair_2038.gif"
+    },
+    {
+      "name": "丝带绒发",
+      "src": "assets/hair_f/hair_2040.gif"
+    },
+    {
+      "name": "塔楼发尾",
+      "src": "assets/hair_f/hair_2041.gif"
+    },
+    {
+      "name": "风铃绒发",
+      "src": "assets/hair_f/hair_2042.gif"
+    },
+    {
+      "name": "夜航蓬发",
+      "src": "assets/hair_f/hair_2043.gif"
+    },
+    {
+      "name": "风铃公主",
+      "src": "assets/hair_f/hair_2050.gif"
+    },
+    {
+      "name": "蕾丝披发",
+      "src": "assets/hair_f/hair_2054.gif"
+    },
+    {
+      "name": "旧信蓬发",
+      "src": "assets/hair_f/hair_2055.gif"
+    },
+    {
+      "name": "花火绒发",
+      "src": "assets/hair_f/hair_2056.gif"
+    },
+    {
+      "name": "星轨卷发",
+      "src": "assets/hair_f/hair_2070.gif"
+    },
+    {
+      "name": "绒球偶发",
+      "src": "assets/hair_f/hair_2073.gif"
+    },
+    {
+      "name": "丝带马尾",
+      "src": "assets/hair_f/hair_2074.gif"
+    },
+    {
+      "name": "汽水漫发",
+      "src": "assets/hair_f/hair_2075.gif"
+    },
+    {
+      "name": "流苏绒发",
+      "src": "assets/hair_f/hair_2076.gif"
+    },
+    {
+      "name": "软糖卷发",
+      "src": "assets/hair_f/hair_2077.gif"
+    },
+    {
+      "name": "雪松层发",
+      "src": "assets/hair_f/hair_2079.gif"
+    },
+    {
+      "name": "月桂马尾",
+      "src": "assets/hair_f/hair_2081.gif"
+    },
+    {
+      "name": "茶会马尾",
+      "src": "assets/hair_f/hair_2082.gif"
+    },
+    {
+      "name": "蕾丝漫发",
+      "src": "assets/hair_f/hair_2083.gif"
+    },
+    {
+      "name": "魔法刘海",
+      "src": "assets/hair_f/hair_2084.gif"
+    },
+    {
+      "name": "童话睡发",
+      "src": "assets/hair_f/hair_2085.gif"
+    },
+    {
+      "name": "茶会侧发",
+      "src": "assets/hair_f/hair_2086.gif"
+    },
+    {
+      "name": "雨伞刘海",
+      "src": "assets/hair_f/hair_2087.gif"
+    },
+    {
+      "name": "云朵绒发",
+      "src": "assets/hair_f/hair_2088.gif"
+    },
+    {
+      "name": "橱窗睡发",
+      "src": "assets/hair_f/hair_2090.gif"
+    },
+    {
+      "name": "塔楼绒发",
+      "src": "assets/hair_f/hair_2091.gif"
+    },
+    {
+      "name": "旋律睡发",
+      "src": "assets/hair_f/hair_2094.gif"
+    },
+    {
+      "name": "海盐偶发",
+      "src": "assets/hair_f/hair_2097.gif"
+    },
+    {
+      "name": "花园蓬发",
+      "src": "assets/hair_f/hair_2105.gif"
+    },
+    {
+      "name": "雪绒披发",
+      "src": "assets/hair_f/hair_2106.gif"
+    },
+    {
+      "name": "花窗发辫",
+      "src": "assets/hair_f/hair_2110.gif"
+    },
+    {
+      "name": "花园院发",
+      "src": "assets/hair_f/hair_2111.gif"
+    },
+    {
       "name": "珠光绒发",
       "src": "assets/hair_f/3432.gif"
     },
@@ -6352,6 +6632,18 @@ window.ITEMS = {
     {
       "name": "银河发尾",
       "src": "assets/hair_m/hair_191.gif"
+    },
+    {
+      "name": "珍珠马尾",
+      "src": "assets/hair_m/hair_2032.gif"
+    },
+    {
+      "name": "汽水披发",
+      "src": "assets/hair_m/hair_2036.gif"
+    },
+    {
+      "name": "海盐波头",
+      "src": "assets/hair_m/hair_2067.gif"
     }
   ],
   "hat": [
@@ -6866,6 +7158,10 @@ window.ITEMS = {
     {
       "name": "流彩巫帽",
       "src": "assets/hat/hat_130.gif"
+    },
+    {
+      "name": "流彩帽子",
+      "src": "assets/hat/hat_131.gif"
     }
   ],
   "glasses": [
@@ -7408,6 +7704,14 @@ window.ITEMS = {
     {
       "name": "万花亮片",
       "src": "assets/effect/30.gif"
+    },
+    {
+      "name": "万花心光",
+      "src": "assets/effect/31.gif"
+    },
+    {
+      "name": "珠光电波",
+      "src": "assets/effect/32.gif"
     },
     {
       "name": "流彩花火",
