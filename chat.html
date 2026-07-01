@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
   <!-- 每房间15人限制版：其余逻辑不变 -->
+  <!-- 管理员白名单版：你的设备可进入任意满员房间 -->
   <title>复古聊天室 2010</title>
   <style>
     * { box-sizing: border-box; }
@@ -2063,6 +2064,7 @@
     const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
     const CHAT_ROOM_BASELINE_PREFIX = "qqshow_chat_room_baseline_v1_";
     const CHAT_ROOM_LIMIT = 15;
+    const CHAT_ADMIN_MEMBER_IDS = new Set(["device_281f7366cdaf4f91bfdd328c2abd7b5e"]);
     const CHAT_ROOMS = {
       castle: { id: "castle_garden", name: "城堡花园", bg: "chat_bg_fixed.png" },
       shibuya: { id: "shibuya_street", name: "涩谷街头", bg: "chat_bg_shibuya.png" },
@@ -2133,6 +2135,11 @@
     function getSavedRoomKey() {
       const saved = localStorage.getItem(CHAT_ACTIVE_ROOM_KEY);
       return CHAT_ROOMS[saved] ? saved : "castle";
+    }
+
+
+    function isChatAdminMember(memberId) {
+      return CHAT_ADMIN_MEMBER_IDS.has(String(memberId || ""));
     }
 
     function getCurrentRoomConfig() {
@@ -2374,10 +2381,18 @@
       }).join("||");
     }
 
+
+    function limitRoomMembersForDisplay(members) {
+      const list = Array.isArray(members) ? members : [];
+      const admins = list.filter(member => isChatAdminMember(member && member.id));
+      const normals = list.filter(member => !isChatAdminMember(member && member.id)).slice(0, CHAT_ROOM_LIMIT);
+      return normals.concat(admins);
+    }
+
     function applyWorkerMembers(rawMembers, options) {
       const opts = options || {};
       let workerMembers = (rawMembers || []).map(normalizeWorkerMember).filter(isRenderableRoomMember);
-      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
+      workerMembers = limitRoomMembersForDisplay(workerMembers);
       const localAvatar = readJSON(CHAT_AVATAR_KEY, null);
       const localMember = localAvatar && localAvatar.id === currentMemberId && Array.isArray(localAvatar.layers)
         ? {
@@ -2395,10 +2410,10 @@
       if (localMember && !workerMembers.some(member => member.id === currentMemberId)) {
         workerMembers.unshift(localMember);
       }
-      workerMembers = workerMembers.slice(0, CHAT_ROOM_LIMIT);
+      workerMembers = limitRoomMembersForDisplay(workerMembers);
 
       const nextHash = getMembersRenderHash(workerMembers);
-      membersCache = workerMembers;
+      membersCache = limitRoomMembersForDisplay(workerMembers);
       if (opts.forceRender || nextHash !== lastMembersRenderHash) {
         lastMembersRenderHash = nextHash;
         renderRoom();
