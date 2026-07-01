@@ -1,0 +1,54 @@
+男性素材清单补全报告
+==============================
+网站根目录：QQ
+
+[clothes_m]
+文件夹图片数：148
+原清单数量：128
+本次新增：20
+补全后数量：148
+新增文件：
+  + assets/clothes_m/cloth_438.gif
+  + assets/clothes_m/cloth_439.gif
+  + assets/clothes_m/cloth_440.gif
+  + assets/clothes_m/cloth_441.gif
+  + assets/clothes_m/cloth_442.gif
+  + assets/clothes_m/cloth_443.gif
+  + assets/clothes_m/cloth_444.gif
+  + assets/clothes_m/cloth_445.gif
+  + assets/clothes_m/cloth_446.gif
+  + assets/clothes_m/cloth_447.gif
+  + assets/clothes_m/cloth_448.gif
+  + assets/clothes_m/cloth_449.gif
+  + assets/clothes_m/cloth_450.gif
+  + assets/clothes_m/cloth_451.gif
+  + assets/clothes_m/cloth_452.gif
+  + assets/clothes_m/cloth_453.gif
+  + assets/clothes_m/cloth_454.gif
+  + assets/clothes_m/cloth_455.gif
+  + assets/clothes_m/cloth_456.gif
+  + assets/clothes_m/cloth_457.gif
+
+[top_m]
+文件夹图片数：18
+原清单数量：14
+本次新增：4
+补全后数量：18
+新增文件：
+  + assets/top_m/top_040.gif
+  + assets/top_m/top_041.gif
+  + assets/top_m/top_042.gif
+  + assets/top_m/top_043.gif
+
+[bottom_m]
+文件夹图片数：13
+原清单数量：12
+本次新增：1
+补全后数量：13
+新增文件：
+  + assets/bottom_m/bottom_030.gif
+
+总新增素材：25
+index.html 缓存版本号修改：成功
+
+已完成：请上传/部署本压缩包中的 index.html、items.js 和 assets。
