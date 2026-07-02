@@ -3396,6 +3396,18 @@ window.ITEMS = {
     {
       "name": "烛光水手",
       "src": "assets/clothes_f/cloth_461.gif"
+    },
+    {
+      "name": "小熊婚纱",
+      "src": "assets/clothes_f/cloth_462.gif"
+    },
+    {
+      "name": "塔楼套装",
+      "src": "assets/clothes_f/cloth_463.gif"
+    },
+    {
+      "name": "童话学院",
+      "src": "assets/clothes_f/cloth_464.gif"
     }
   ],
   "clothes_m": [
@@ -3990,6 +4002,42 @@ window.ITEMS = {
     {
       "name": "贝壳制服",
       "src": "assets/clothes_m/cloth_457.gif"
+    },
+    {
+      "name": "水晶水手",
+      "src": "assets/clothes_m/cloth_458.gif"
+    },
+    {
+      "name": "信笺运动",
+      "src": "assets/clothes_m/cloth_459.gif"
+    },
+    {
+      "name": "兔耳制服",
+      "src": "assets/clothes_m/cloth_460.gif"
+    },
+    {
+      "name": "烟火熊装",
+      "src": "assets/clothes_m/cloth_461.gif"
+    },
+    {
+      "name": "玻璃旗袍",
+      "src": "assets/clothes_m/cloth_462.gif"
+    },
+    {
+      "name": "银链套装",
+      "src": "assets/clothes_m/cloth_463.gif"
+    },
+    {
+      "name": "剧院公主",
+      "src": "assets/clothes_m/cloth_464.gif"
+    },
+    {
+      "name": "舞会乐队",
+      "src": "assets/clothes_m/cloth_465.gif"
+    },
+    {
+      "name": "星屑斗篷",
+      "src": "assets/clothes_m/cloth_466.gif"
     }
   ],
   "bottom": [
