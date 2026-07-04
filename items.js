@@ -1351,6 +1351,10 @@ window.ITEMS = {
     {
       "name": "幻彩梦廊",
       "src": "assets/background/bg_415.gif"
+    },
+    {
+      "name": "星爆云阶",
+      "src": "assets/background/bg_416.gif"
     }
   ],
   "front": [
@@ -3408,6 +3412,30 @@ window.ITEMS = {
     {
       "name": "童话学院",
       "src": "assets/clothes_f/cloth_464.gif"
+    },
+    {
+      "name": "蓝莓洋装",
+      "src": "assets/clothes_f/cloth_465.gif"
+    },
+    {
+      "name": "花园衣裙",
+      "src": "assets/clothes_f/cloth_466.gif"
+    },
+    {
+      "name": "雪松礼裙",
+      "src": "assets/clothes_f/cloth_467.gif"
+    },
+    {
+      "name": "胶片女仆",
+      "src": "assets/clothes_f/cloth_468.gif"
+    },
+    {
+      "name": "香水制服",
+      "src": "assets/clothes_f/cloth_469.gif"
+    },
+    {
+      "name": "珍珠茶裙",
+      "src": "assets/clothes_f/cloth_470.gif"
     }
   ],
   "clothes_m": [
@@ -4038,6 +4066,42 @@ window.ITEMS = {
     {
       "name": "星屑斗篷",
       "src": "assets/clothes_m/cloth_466.gif"
+    },
+    {
+      "name": "小熊睡衣",
+      "src": "assets/clothes_m/cloth_467.gif"
+    },
+    {
+      "name": "银河乐队",
+      "src": "assets/clothes_m/cloth_468.gif"
+    },
+    {
+      "name": "冰沙茶裙",
+      "src": "assets/clothes_m/cloth_469.gif"
+    },
+    {
+      "name": "贝壳旗袍",
+      "src": "assets/clothes_m/cloth_470.gif"
+    },
+    {
+      "name": "塔楼斗篷",
+      "src": "assets/clothes_m/cloth_471.gif"
+    },
+    {
+      "name": "风铃水手",
+      "src": "assets/clothes_m/cloth_472.gif"
+    },
+    {
+      "name": "旋律外套",
+      "src": "assets/clothes_m/cloth_473.gif"
+    },
+    {
+      "name": "糖纸学院",
+      "src": "assets/clothes_m/cloth_474.gif"
+    },
+    {
+      "name": "流苏制服",
+      "src": "assets/clothes_m/cloth_475.gif"
     }
   ],
   "bottom": [
@@ -4912,6 +4976,10 @@ window.ITEMS = {
     {
       "name": "珠光暖肤",
       "src": "assets/body/body_042.gif"
+    },
+    {
+      "name": "彩梦娃身",
+      "src": "assets/body/body_043.gif"
     }
   ],
   "neck": [
@@ -7338,6 +7406,10 @@ window.ITEMS = {
     {
       "name": "流彩皇冠",
       "src": "assets/hat/hat_133.gif"
+    },
+    {
+      "name": "霓虹水帽",
+      "src": "assets/hat/hat_134.gif"
     }
   ],
   "glasses": [
@@ -7686,12 +7758,24 @@ window.ITEMS = {
       "src": "assets/face/15.gif"
     },
     {
+      "name": "彩梦雀斑",
+      "src": "assets/face/16.gif"
+    },
+    {
+      "name": "幻糖面饰",
+      "src": "assets/face/17.gif"
+    },
+    {
       "name": "花火腮红",
       "src": "assets/face/hat_096.gif"
     },
     {
       "name": "奶油腮红",
       "src": "assets/face/hat_097.gif"
+    },
+    {
+      "name": "珠光脸饰",
+      "src": "assets/face/213.gif"
     }
   ],
   "hand": [
@@ -7754,10 +7838,6 @@ window.ITEMS = {
     {
       "name": "温柔星杖",
       "src": "assets/hand/hand_011.gif"
-    },
-    {
-      "name": "蓝莓扇子",
-      "src": "assets/hand/13.gif"
     }
   ],
   "effect": [
