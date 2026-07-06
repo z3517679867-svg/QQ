@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 已移除聊天室按钮和入口 -->
   <title>复古换装小屋</title>
 
   <style>
@@ -1647,8 +1648,7 @@ h1 {
           <button class="random-btn" onclick="randomAllItems()">美观随机</button>
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
-          <button class="chat-btn" onclick="enterRetroChatRoom()">进入聊天室</button>
-          <button class="notice-btn" onclick="openNotice()">声明</button>
+<button class="notice-btn" onclick="openNotice()">声明</button>
         </div>
       </div>
 
@@ -3386,45 +3386,7 @@ h1 {
       return "";
     }
 
-    function enterRetroChatRoom() {
-      const returnedFromCottage = localStorage.getItem(CHAT_RETURN_REENTER_KEY) === "1";
-      const savedNickname = getSavedChatNickname();
-      let name = returnedFromCottage ? savedNickname : "";
 
-      if (!name) {
-        const inputName = window.prompt("请填写聊天室昵称（必填，最多12字）：", savedNickname || "");
-        if (inputName === null) return;
-        name = String(inputName || "").trim().slice(0, 12);
-      }
-
-      if (!name) {
-        alert("进入聊天室前必须填写昵称，不能留空。");
-        return;
-      }
-
-      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, name);
-      if (returnedFromCottage) {
-        localStorage.setItem(CHAT_PRESERVE_HISTORY_KEY, "1");
-      } else {
-        localStorage.removeItem(CHAT_PRESERVE_HISTORY_KEY);
-      }
-
-      const avatarData = buildChatAvatarData(name);
-
-      if (!avatarData.layers || avatarData.layers.length === 0) {
-        alert("当前形象没有可进入聊天室的图层，请至少选择身体或衣服素材。");
-        return;
-      }
-
-      saveChatMember(avatarData);
-
-      trackGAEvent("enter_retro_chat", {
-        gender: currentGender,
-        layer_count: avatarData.layers.length
-      });
-
-      window.location.href = "chat.html";
-    }
 
 
     init();
