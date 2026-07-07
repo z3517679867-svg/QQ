@@ -14,7 +14,9 @@
           location.replace("chat-login.html?reason=login_required");
           return;
         }
-        document.documentElement.style.visibility = "visible";
+        const guardStyle = document.getElementById("authGuardStyle");
+        if (guardStyle) guardStyle.remove();
+        document.documentElement.style.setProperty("visibility", "visible", "important");
       } catch (error) {
         location.replace("chat-login.html?reason=login_required");
       }
