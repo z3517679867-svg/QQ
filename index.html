@@ -2130,6 +2130,9 @@ h1 {
       updateClothesVisibility();
       updateGenderStatus();
       updateHistoryButtons();
+
+      // 页面恢复上次搭配后，立即把当前形象同步给聊天室。
+      syncLatestAvatarToChatStorage();
     }
 
     function addEmptyOption(realCategory, displayCategory) {
@@ -2450,6 +2453,11 @@ h1 {
         };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+        // 同步最新换装形象到聊天室缓存。
+        // 聊天室在加入房间时读取 qqshow_chat_avatar_v1，
+        // 因此每次换装保存后都要覆盖为当前最新图层。
+        syncLatestAvatarToChatStorage();
       } catch (error) {
         console.log("自动保存搭配失败：", error);
       }
@@ -3384,6 +3392,31 @@ h1 {
         if (avatar && avatar.name && String(avatar.name).trim()) return String(avatar.name).trim().slice(0, 12);
       } catch (error) {}
       return "";
+    }
+
+    function syncLatestAvatarToChatStorage() {
+      try {
+        let previousAvatar = null;
+        try {
+          const raw = localStorage.getItem(CHAT_AVATAR_KEY);
+          previousAvatar = raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          previousAvatar = null;
+        }
+
+        // 保留已经使用过的昵称；只更新服装、头发、身体与饰品图层。
+        const nickname = getSavedChatNickname();
+        const latestAvatar = buildChatAvatarData(nickname);
+
+        // 保留上次在聊天室中的位置，避免换装后重新进入时随机跳位。
+        if (previousAvatar && previousAvatar.pos && typeof previousAvatar.pos === "object") {
+          latestAvatar.pos = previousAvatar.pos;
+        }
+
+        saveChatMember(latestAvatar);
+      } catch (error) {
+        console.log("同步最新形象到聊天室失败：", error);
+      }
     }
 
 

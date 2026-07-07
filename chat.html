@@ -2112,7 +2112,7 @@
 
     let membersCache = [];
     let messagesCache = [];
-    const CHAT_HISTORY_FETCH_LIMIT = 15;
+    const CHAT_HISTORY_FETCH_LIMIT = 5;
     const CHAT_HISTORY_DISPLAY_LIMIT = 5; // 只显示最近5条
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
@@ -3081,30 +3081,44 @@
     }
 
     async function loadMessages(options) {
-      if (!currentRoomId || messagePollInFlight) return;
+      if (!currentRoomId || !currentMemberId || messagePollInFlight) return;
       messagePollInFlight = true;
       try {
+        const opts = options || {};
         const previousMaxId = Number(lastLoadedMessageId || 0);
+        const initialLoad = previousMaxId <= 0 || opts.forceHistory === true;
+        const afterId = initialLoad ? 0 : previousMaxId;
         const historyPath = "/history?room_id=" + encodeURIComponent(currentRoomId)
-          + "&member_id=" + encodeURIComponent(currentMemberId || "")
-          + "&after_id=0"
+          + "&member_id=" + encodeURIComponent(currentMemberId)
+          + "&after_id=" + encodeURIComponent(afterId)
           + "&limit=" + CHAT_HISTORY_FETCH_LIMIT;
         const data = await workerFetch(historyPath, null, 9000);
-        const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
-        const nextHash = nextMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
-        messagesCache = nextMessages;
-        const newMaxId = nextMessages.reduce((max, item) => {
+        const nextMessages = Array.isArray(data && data.messages)
+          ? data.messages.map(normalizeWorkerMessage).filter(Boolean)
+          : [];
+
+        if (initialLoad) {
+          messagesCache = nextMessages.slice(-CHAT_HISTORY_FETCH_LIMIT);
+        } else {
+          nextMessages.forEach(message => appendMessage(message));
+          messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
+        }
+
+        const newMaxId = messagesCache.reduce((max, item) => {
           const id = Number(item.id);
           return Number.isFinite(id) && id > max ? id : max;
         }, previousMaxId || 0);
 
-        if ((options && options.forceRender) || nextHash !== lastMessagesRenderHash) {
+        const nextHash = messagesCache
+          .map(message => [message.id, message.memberId, message.text, message.createdAt].join("~"))
+          .join("||");
+
+        if (opts.forceRender || nextHash !== lastMessagesRenderHash) {
           lastMessagesRenderHash = nextHash;
           renderMessages();
         }
 
-        // 初次进入只恢复历史，不弹旧气泡；之后轮询到的新发言才弹气泡。
-        if (previousMaxId > 0) {
+        if (!initialLoad && previousMaxId > 0) {
           nextMessages.forEach(message => {
             const id = Number(message.id || 0);
             if (Number.isFinite(id) && id > previousMaxId) {
