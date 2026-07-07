@@ -4,24 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <style id="authGuardStyle">html{visibility:hidden !important;}</style>
-  <script>
-    (function () {
-      const CHAT_TOKEN_KEY = "qqshow_chat_access_token_v1";
-      try {
-        const token = sessionStorage.getItem(CHAT_TOKEN_KEY) || "";
-        if (!token) {
-          location.replace("chat-login.html?reason=login_required");
-          return;
-        }
-        const guardStyle = document.getElementById("authGuardStyle");
-        if (guardStyle) guardStyle.remove();
-        document.documentElement.style.setProperty("visibility", "visible", "important");
-      } catch (error) {
-        location.replace("chat-login.html?reason=login_required");
-      }
-    })();
-  </script>
   <!-- 每房间15人限制版：其余逻辑不变 -->
   <!-- 管理员白名单版：你的设备可进入任意满员房间 -->
   <title>复古聊天室 2010</title>
@@ -2477,8 +2459,10 @@
       try {
         const token = sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY) || "";
         if (!token) {
-          location.replace("chat-login.html?reason=login_required");
-          throw new Error("聊天室通行令牌不存在");
+          const authError = new Error("聊天室未登录");
+          authError.status = 401;
+          authError.code = "unauthorized";
+          throw authError;
         }
 
         const mergedOptions = Object.assign({ cache: "no-store" }, options || {});
@@ -2490,7 +2474,6 @@
 
         if (response.status === 401) {
           sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);
-          location.replace("chat-login.html?reason=session_expired");
         }
 
         if (!response.ok) {
@@ -3652,7 +3635,20 @@
       }
     });
 
-    initOnlineChat();
+    (function startChatPage() {
+      const token = sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY) || "";
+      if (token) {
+        initOnlineChat();
+        return;
+      }
+
+      // 直接访问 /chat 时保留旧版聊天室页面外观，但不连接服务器、不加入在线列表。
+      applyChatRoom(currentRoomKey);
+      setupStagePositionClick();
+      renderRoom();
+      renderMessages();
+      updateSystemLine("欢迎进入多人怀旧换装大厅。");
+    })();
   </script>
   <script>
     // 手机端输入框固定布局：记录初始可视高度，键盘弹出时不让页面整体被重新压缩或放大。
