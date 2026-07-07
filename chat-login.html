@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>私人聊天室登录</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"Microsoft YaHei",Tahoma,Arial,sans-serif;color:#073d66}
+    body{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 16% 12%,rgba(255,255,255,.9) 0 4%,transparent 10%),radial-gradient(circle at 82% 16%,rgba(255,255,255,.8) 0 5%,transparent 12%),linear-gradient(180deg,#2a8df2 0%,#55b8ff 46%,#bceaff 66%,#71c84a 67%,#3ea63b 100%)}
+    .window{width:min(430px,94vw);border:1px solid #1389b9;border-radius:10px;overflow:hidden;background:rgba(241,252,255,.98);box-shadow:0 14px 38px rgba(0,51,95,.28)}
+    .titlebar{padding:10px 14px;font-weight:700;color:white;text-shadow:0 1px 0 rgba(0,0,0,.25);background:linear-gradient(180deg,#36b6e8 0%,#1596cf 52%,#0b7fb7 100%);border-bottom:1px solid #086b98}
+    .content{padding:22px 20px 18px}.badge{width:70px;height:70px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;font-size:35px;background:linear-gradient(180deg,#fffef3,#d8f5ff);border:1px solid #8bcbe6;box-shadow:inset 0 1px 0 white,0 4px 12px rgba(4,115,160,.16)}
+    h1{margin:0 0 7px;text-align:center;font-size:21px;color:#075d8c}.desc{margin:0 0 18px;text-align:center;font-size:12px;line-height:1.7;color:#53788f}
+    label{display:block;margin-bottom:6px;font-size:12px;font-weight:700}.password-wrap{display:flex;gap:7px}input{width:100%;height:40px;padding:0 11px;border:1px solid #7eb9d3;border-radius:5px;outline:none;font-size:15px;background:white;color:#163f57}input:focus{border-color:#1a9bd3;box-shadow:0 0 0 3px rgba(40,170,220,.16)}
+    button{border:1px solid #0879ae;border-radius:5px;color:white;font-weight:700;cursor:pointer;background:linear-gradient(180deg,#43bee9,#148fca);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}.show-btn{width:64px;flex:0 0 64px;color:#075a82;background:linear-gradient(180deg,#fff,#dff4fc);border-color:#8ac7df}.enter-btn{width:100%;height:42px;margin-top:14px;font-size:14px}button:disabled{opacity:.6;cursor:default}
+    .status{min-height:22px;margin-top:10px;font-size:12px;line-height:1.55;text-align:center;color:#b42318}.status.ok{color:#18733c}.footer{border-top:1px solid #c6e3ef;padding:10px 14px;text-align:center;font-size:11px;color:#6b8b9e;background:#edf9fd}.back-link{color:#0a76a8;text-decoration:none}.back-link:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <main class="window">
+    <div class="titlebar">私人聊天室 · 身份验证</div>
+    <section class="content">
+      <div class="badge" aria-hidden="true">🔐</div>
+      <h1>请输入聊天室密码</h1>
+      <p class="desc">密码只会发送到聊天室服务器验证，不会写入网页源码。验证通过后，本标签页可使用 12 小时。</p>
+      <form id="loginForm" autocomplete="off">
+        <label for="passwordInput">聊天室密码</label>
+        <div class="password-wrap"><input id="passwordInput" type="password" maxlength="128" autocomplete="current-password" required autofocus><button id="showButton" class="show-btn" type="button">显示</button></div>
+        <button id="enterButton" class="enter-btn" type="submit">进入聊天室</button>
+        <div id="status" class="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <footer class="footer"><a class="back-link" href="index.html">返回换装首页</a></footer>
+  </main>
+  <script>
+    const CHAT_API_BASE="https://chat-api.loveofqshow.online";
+    const CHAT_DEVICE_MEMBER_KEY="qqshow_chat_device_member_id_v2";
+    const CHAT_ACCESS_TOKEN_KEY="qqshow_chat_access_token_v1";
+    const form=document.getElementById("loginForm"),input=document.getElementById("passwordInput"),enterButton=document.getElementById("enterButton"),showButton=document.getElementById("showButton"),statusBox=document.getElementById("status");
+    function createSafeRandomId(){if(window.crypto&&typeof window.crypto.randomUUID==="function")return "device_"+window.crypto.randomUUID().replace(/-/g,"");return "device_"+Date.now()+"_"+Math.random().toString(36).slice(2,12)}
+    function getStableMemberId(){let id=localStorage.getItem(CHAT_DEVICE_MEMBER_KEY)||"";if(!id){id=createSafeRandomId();localStorage.setItem(CHAT_DEVICE_MEMBER_KEY,id)}return id}
+    function showStatus(message,ok){statusBox.textContent=message||"";statusBox.className=ok?"status ok":"status"}
+    function clearExpiredToken(){const params=new URLSearchParams(location.search);if(params.get("reason")==="session_expired"){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);showStatus("登录已过期，请重新输入密码。",false)}}
+    async function checkExistingToken(){const token=sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY)||"";if(!token)return false;try{const response=await fetch(CHAT_API_BASE+"/auth/status",{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});if(!response.ok){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);return false}const data=await response.json();if(data&&data.authenticated){location.replace("chat.html");return true}}catch(_){}return false}
+    showButton.addEventListener("click",function(){const showing=input.type==="text";input.type=showing?"password":"text";showButton.textContent=showing?"显示":"隐藏";input.focus()});
+    form.addEventListener("submit",async function(event){event.preventDefault();const password=input.value;if(!password){showStatus("请输入聊天室密码。",false);input.focus();return}enterButton.disabled=true;showStatus("正在验证密码……",true);try{const response=await fetch(CHAT_API_BASE+"/auth/login",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({password,member_id:getStableMemberId()})});const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!response.ok){if(response.status===429){const seconds=Number(data&&data.retry_after_seconds||0);const minutes=seconds>0?Math.max(1,Math.ceil(seconds/60)):30;throw new Error("尝试次数过多，请约 "+minutes+" 分钟后再试。")}throw new Error(data&&data.message||"密码验证失败。")}if(!data||!data.token)throw new Error("服务器未返回有效通行令牌。");sessionStorage.setItem(CHAT_ACCESS_TOKEN_KEY,data.token);showStatus("验证成功，正在进入聊天室……",true);location.replace("chat.html")}catch(error){showStatus(error&&error.message?error.message:"网络连接失败，请稍后再试。",false);enterButton.disabled=false;input.select()}});
+    clearExpiredToken();checkExistingToken();
+  </script>
+</body>
+</html>
