@@ -2113,7 +2113,7 @@
     let membersCache = [];
     let messagesCache = [];
     const CHAT_HISTORY_FETCH_LIMIT = 15;
-    const CHAT_HISTORY_DISPLAY_LIMIT = 15; // 只显示最近15条
+    const CHAT_HISTORY_DISPLAY_LIMIT = 5; // 只显示最近5条
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
@@ -2881,7 +2881,7 @@
 
       updateSystemLine(getLatestSystemMessageText());
 
-      // 历史消息：最多渲染最近 20 条；消息栏通过 CSS 固定为约 5 行高度，剩余内容可滚动查看。
+      // 历史消息：只渲染最近 5 条；消息栏保持约 5 行可见高度。
       const chatMessages = messagesCache
         .filter(message => !isSystemMessage(message))
         .slice(-CHAT_HISTORY_DISPLAY_LIMIT);
@@ -3085,7 +3085,11 @@
       messagePollInFlight = true;
       try {
         const previousMaxId = Number(lastLoadedMessageId || 0);
-        const data = await workerFetch("/history?room_id=" + encodeURIComponent(currentRoomId) + "&limit=" + CHAT_HISTORY_FETCH_LIMIT, null, 9000);
+        const historyPath = "/history?room_id=" + encodeURIComponent(currentRoomId)
+          + "&member_id=" + encodeURIComponent(currentMemberId || "")
+          + "&after_id=0"
+          + "&limit=" + CHAT_HISTORY_FETCH_LIMIT;
+        const data = await workerFetch(historyPath, null, 9000);
         const nextMessages = (data.messages || []).map(normalizeWorkerMessage).filter(Boolean);
         const nextHash = nextMessages.map(message => [message.id, message.memberId, message.text, message.createdAt].join("~")).join("||");
         messagesCache = nextMessages;
