@@ -2112,8 +2112,8 @@
 
     let membersCache = [];
     let messagesCache = [];
-    const CHAT_HISTORY_FETCH_LIMIT = 5;
-    const CHAT_HISTORY_DISPLAY_LIMIT = 5; // 只显示最近5条
+    const CHAT_HISTORY_FETCH_LIMIT = 15;
+    const CHAT_HISTORY_DISPLAY_LIMIT = 15; // 最多显示最近15条
     const activeBubblesByMember = {};
     const activeBubbleTimersByMember = {};
     const BUBBLE_DISPLAY_MS = 5000;
@@ -2881,7 +2881,7 @@
 
       updateSystemLine(getLatestSystemMessageText());
 
-      // 历史消息：只渲染最近 5 条；消息栏保持约 5 行可见高度。
+      // 历史消息：最多渲染最近 15 条；消息区可滚动查看。
       const chatMessages = messagesCache
         .filter(message => !isSystemMessage(message))
         .slice(-CHAT_HISTORY_DISPLAY_LIMIT);
