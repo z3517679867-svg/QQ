@@ -2129,6 +2129,8 @@
     let positionUpdateTimer = null;
     let realtimeReady = false;
     let lastLoadedMessageId = 0;
+    // 只允许进入聊天室之后的新消息弹出人物气泡；历史记录只显示在下方消息区。
+    let lastBubbleMessageId = 0;
     // 恢复历史消息：手机端和电脑端都读取当前房间最近消息，不再按进入时间截断。
     let roomEntryBaselineMessageId = 0;
     let preserveHistoryReentry = localStorage.getItem(CHAT_PRESERVE_HISTORY_KEY) === "1";
@@ -3074,6 +3076,7 @@
       // 恢复历史消息：无论新进入、刷新、切换房间，均读取当前房间最近聊天记录。
       roomEntryBaselineMessageId = 0;
       lastLoadedMessageId = 0;
+      lastBubbleMessageId = 0;
       messagesCache = [];
       Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
       updateSystemLine(opts.preserve ? "已返回聊天室，正在恢复房间历史消息。" : "欢迎进入多人怀旧换装大厅。");
@@ -3118,13 +3121,23 @@
           renderMessages();
         }
 
-        if (!initialLoad && previousMaxId > 0) {
+        // 历史消息只进入下方聊天记录，不重新弹到人物头顶。
+        // 第一次拿到历史记录时建立“气泡基线”；之后只有 ID 更大的新消息才弹气泡。
+        if (initialLoad) {
+          lastBubbleMessageId = Math.max(lastBubbleMessageId, newMaxId);
+        } else {
+          if (lastBubbleMessageId <= 0) lastBubbleMessageId = previousMaxId;
           nextMessages.forEach(message => {
             const id = Number(message.id || 0);
-            if (Number.isFinite(id) && id > previousMaxId) {
+            if (Number.isFinite(id) && id > lastBubbleMessageId) {
               showMessageBubbleOnce(message);
             }
           });
+          const nextBubbleMaxId = nextMessages.reduce((max, item) => {
+            const id = Number(item.id);
+            return Number.isFinite(id) && id > max ? id : max;
+          }, lastBubbleMessageId);
+          lastBubbleMessageId = Math.max(lastBubbleMessageId, nextBubbleMaxId);
         }
 
         lastLoadedMessageId = newMaxId;
@@ -3262,6 +3275,7 @@
 
         const id = Number(message && message.id || 0);
         if (Number.isFinite(id) && id > lastLoadedMessageId) lastLoadedMessageId = id;
+        if (Number.isFinite(id) && id > lastBubbleMessageId) lastBubbleMessageId = id;
       } else if (!sendOptions.tempId) {
         showBubble(currentMemberId, text);
       }
