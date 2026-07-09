@@ -3073,13 +3073,13 @@
 
     async function resetRoomHistoryBaseline(options) {
       const opts = options || {};
-      // 恢复历史消息：无论新进入、刷新、切换房间，均读取当前房间最近聊天记录。
+      // 进入、刷新或切换房间时清空聊天框，只从进入后的新消息开始显示。
       roomEntryBaselineMessageId = 0;
       lastLoadedMessageId = 0;
       lastBubbleMessageId = 0;
       messagesCache = [];
       Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
-      updateSystemLine(opts.preserve ? "已返回聊天室，正在恢复房间历史消息。" : "欢迎进入多人怀旧换装大厅。");
+      updateSystemLine(opts.preserve ? "已返回聊天室，只显示进入后的新消息。" : "欢迎进入多人怀旧换装大厅。");
       renderMessages();
     }
 
@@ -3101,11 +3101,29 @@
           : [];
 
         if (initialLoad) {
-          messagesCache = nextMessages.slice(-CHAT_HISTORY_FETCH_LIMIT);
-        } else {
-          nextMessages.forEach(message => appendMessage(message));
-          messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
+          // 进入房间时只建立“最新消息基线”，不把此前聊天记录放进聊天框。
+          // 之后轮询只请求 baseline 之后的新消息，并在本次在线期间最多保留 15 条。
+          const historyMaxId = nextMessages.reduce((max, item) => {
+            const id = Number(item.id);
+            return Number.isFinite(id) && id > max ? id : max;
+          }, 0);
+          const serverLastMessageId = Number(data && data.last_message_id || 0);
+          const baselineId = Math.max(
+            Number.isFinite(serverLastMessageId) ? serverLastMessageId : 0,
+            historyMaxId,
+            previousMaxId || 0
+          );
+
+          messagesCache = [];
+          lastLoadedMessageId = baselineId;
+          lastBubbleMessageId = baselineId;
+          lastMessagesRenderHash = "";
+          renderMessages();
+          return;
         }
+
+        nextMessages.forEach(message => appendMessage(message));
+        messagesCache = messagesCache.slice(-CHAT_HISTORY_FETCH_LIMIT);
 
         const newMaxId = messagesCache.reduce((max, item) => {
           const id = Number(item.id);
