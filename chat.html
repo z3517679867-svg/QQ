@@ -2256,6 +2256,9 @@
       const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
       if (key === currentRoomKey) return;
 
+      // 切换房间前先停止旧房间的消息轮询，避免新房间尚未 join 时提前请求历史记录。
+      stopMessagePolling();
+
       const oldRoomId = currentRoomId;
       const oldRoomName = getCurrentRoomConfig().name;
       const oldMember = membersCache.find(member => member.id === currentMemberId);
@@ -2282,7 +2285,7 @@
       renderRoom();
       renderMessages();
       await resetRoomHistoryBaseline();
-      await loadMessages();
+      // 必须先 join，再读取历史消息；否则 Worker 会因为当前房间成员关系尚未建立而返回空数组。
       await joinRoom({ roomSwitch: true });
     }
 
@@ -3243,9 +3246,9 @@
       if (response && response.members) {
         applyWorkerMembers(response.members);
       }
-      updateSystemLine("Cloudflare 聊天室已连接（15人显示修复版）。");
+      updateSystemLine("Cloudflare 聊天室已连接（历史记录15条版）。");
       startMemberPolling();
-      startMessagePolling();
+      // 消息轮询由 joinRoom 在完成首次历史记录加载后启动，避免首次进入时丢失历史消息。
       return response;
     }
 
@@ -3344,6 +3347,9 @@
 
       try {
         await httpJoinRoom(avatar, pos);
+        // 当前成员已成功写入 room_members；此时再读取最近15条历史记录。
+        await loadMessages({ forceHistory: true, forceRender: true });
+        startMessagePolling();
       } catch (error) {
         console.error("HTTP 加入聊天室失败", error);
         if (error && error.code === "room_full") {
@@ -3649,7 +3655,7 @@
       renderRoom();
       renderMessages();
       await resetRoomHistoryBaseline({ preserve: preserveHistoryReentry });
-      await loadMessages();
+      // 先加入房间，joinRoom 会在成员关系建立后加载最近15条历史记录并启动轮询。
       await joinRoom();
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       heartbeatTimer = setInterval(heartbeat, 30000);
