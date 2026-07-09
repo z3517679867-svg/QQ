@@ -2131,7 +2131,7 @@
     let lastLoadedMessageId = 0;
     // 只允许进入聊天室之后的新消息弹出人物气泡；历史记录只显示在下方消息区。
     let lastBubbleMessageId = 0;
-    // 恢复历史消息：手机端和电脑端都读取当前房间最近消息，不再按进入时间截断。
+    // 历史消息最多显示最近 15 条；进入前的旧消息不弹人物气泡。
     let roomEntryBaselineMessageId = 0;
     let preserveHistoryReentry = localStorage.getItem(CHAT_PRESERVE_HISTORY_KEY) === "1";
     let systemToastTimer = null;
@@ -3079,7 +3079,7 @@
       lastBubbleMessageId = 0;
       messagesCache = [];
       Object.keys(activeBubblesByMember).forEach(id => delete activeBubblesByMember[id]);
-      updateSystemLine(opts.preserve ? "已返回聊天室，只显示进入后的新消息。" : "欢迎进入多人怀旧换装大厅。");
+      updateSystemLine(opts.preserve ? "已返回聊天室，显示最近 15 条聊天记录。" : "欢迎进入多人怀旧换装大厅。");
       renderMessages();
     }
 
@@ -3101,8 +3101,11 @@
           : [];
 
         if (initialLoad) {
-          // 进入房间时只建立“最新消息基线”，不把此前聊天记录放进聊天框。
-          // 之后轮询只请求 baseline 之后的新消息，并在本次在线期间最多保留 15 条。
+          // 进入房间时显示最近 15 条历史消息，但不让这些历史消息再次弹出人物气泡。
+          messagesCache = nextMessages
+            .filter(message => !isSystemMessage(message))
+            .slice(-CHAT_HISTORY_DISPLAY_LIMIT);
+
           const historyMaxId = nextMessages.reduce((max, item) => {
             const id = Number(item.id);
             return Number.isFinite(id) && id > max ? id : max;
@@ -3114,10 +3117,11 @@
             previousMaxId || 0
           );
 
-          messagesCache = [];
           lastLoadedMessageId = baselineId;
           lastBubbleMessageId = baselineId;
-          lastMessagesRenderHash = "";
+          lastMessagesRenderHash = messagesCache
+            .map(message => [message.id, message.memberId, message.text, message.createdAt].join("~"))
+            .join("||");
           renderMessages();
           return;
         }
