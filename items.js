@@ -3436,6 +3436,14 @@ window.ITEMS = {
     {
       "name": "珍珠茶裙",
       "src": "assets/clothes_f/cloth_470.gif"
+    },
+    {
+      "name": "雨伞兔装",
+      "src": "assets/clothes_f/cloth_471.gif"
+    },
+    {
+      "name": "蓝莓派装",
+      "src": "assets/clothes_f/cloth_472.gif"
     }
   ],
   "clothes_m": [
@@ -3968,10 +3976,6 @@ window.ITEMS = {
       "src": "assets/clothes_m/cloth_441.gif"
     },
     {
-      "name": "橱窗外套",
-      "src": "assets/clothes_m/cloth_442.gif"
-    },
-    {
       "name": "徽章魔裙",
       "src": "assets/clothes_m/cloth_443.gif"
     },
@@ -4102,6 +4106,10 @@ window.ITEMS = {
     {
       "name": "流苏制服",
       "src": "assets/clothes_m/cloth_475.gif"
+    },
+    {
+      "name": "云朵学院",
+      "src": "assets/clothes_m/cloth_476.gif"
     }
   ],
   "bottom": [
@@ -4310,6 +4318,10 @@ window.ITEMS = {
     {
       "name": "霓虹花裙",
       "src": "assets/bottom_f/bottom_034.gif"
+    },
+    {
+      "name": "虹光底裙",
+      "src": "assets/bottom_f/bottom_035.gif"
     }
   ],
   "bottom_m": [
@@ -4636,6 +4648,10 @@ window.ITEMS = {
     {
       "name": "流彩披肩",
       "src": "assets/top_f/top_054.gif"
+    },
+    {
+      "name": "霓虹背心",
+      "src": "assets/top_f/top_055.gif"
     }
   ],
   "top_m": [
@@ -5134,6 +5150,14 @@ window.ITEMS = {
     {
       "name": "幻糖星链",
       "src": "assets/neck/44.gif"
+    },
+    {
+      "name": "星爆花环",
+      "src": "assets/neck/45.gif"
+    },
+    {
+      "name": "幻糖花环",
+      "src": "assets/neck/46.gif"
     },
     {
       "name": "糖果颈环",
@@ -6638,10 +6662,6 @@ window.ITEMS = {
       "src": "assets/hair_m/hair_1.gif"
     },
     {
-      "name": "流苏刘海",
-      "src": "assets/hair_m/hair_3.gif"
-    },
-    {
       "name": "胶片侧发",
       "src": "assets/hair_m/hair_4.gif"
     },
@@ -6872,6 +6892,10 @@ window.ITEMS = {
     {
       "name": "蓝莓发辫",
       "src": "assets/hair_m/hair_194.gif"
+    },
+    {
+      "name": "小熊发辫",
+      "src": "assets/hair_m/hair_195.gif"
     },
     {
       "name": "汽水披发",
@@ -7410,6 +7434,18 @@ window.ITEMS = {
     {
       "name": "霓虹水帽",
       "src": "assets/hat/hat_134.gif"
+    },
+    {
+      "name": "虹光王冠",
+      "src": "assets/hat/hat_135.gif"
+    },
+    {
+      "name": "星爆贝帽",
+      "src": "assets/hat/hat_136.gif"
+    },
+    {
+      "name": "幻糖鸭帽",
+      "src": "assets/hat/hat_137.gif"
     }
   ],
   "glasses": [

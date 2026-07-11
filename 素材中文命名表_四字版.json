@@ -1988,7 +1988,6 @@
   "assets/hat/hat_123.gif": "万花头饰",
   "assets/hair_m/hair_1.gif": "蜜糖长发",
   "assets/hair_m/hair_12.gif": "羽毛漫发",
-  "assets/hair_m/hair_3.gif": "流苏刘海",
   "assets/hair_m/hair_4.gif": "胶片侧发",
   "assets/hair_m/hair_6.gif": "书页卷发",
   "assets/hair_m/hair_7.gif": "舞会偶发",
@@ -2175,7 +2174,6 @@
   "assets/clothes_m/cloth_439.gif": "流苏女仆",
   "assets/clothes_m/cloth_440.gif": "魔法侦探",
   "assets/clothes_m/cloth_441.gif": "软糖套装",
-  "assets/clothes_m/cloth_442.gif": "橱窗外套",
   "assets/clothes_m/cloth_443.gif": "徽章魔裙",
   "assets/clothes_m/cloth_444.gif": "旋律水手",
   "assets/clothes_m/cloth_445.gif": "书页毛装",
@@ -2237,5 +2235,16 @@
   "assets/face/16.gif": "彩梦雀斑",
   "assets/face/17.gif": "幻糖面饰",
   "assets/face/213.gif": "珠光脸饰",
-  "assets/hat/hat_134.gif": "霓虹水帽"
+  "assets/hat/hat_134.gif": "霓虹水帽",
+  "assets/bottom_f/bottom_035.gif": "虹光底裙",
+  "assets/clothes_f/cloth_471.gif": "雨伞兔装",
+  "assets/clothes_f/cloth_472.gif": "蓝莓派装",
+  "assets/clothes_m/cloth_476.gif": "云朵学院",
+  "assets/hair_m/hair_195.gif": "小熊发辫",
+  "assets/hat/hat_135.gif": "虹光王冠",
+  "assets/hat/hat_136.gif": "星爆贝帽",
+  "assets/hat/hat_137.gif": "幻糖鸭帽",
+  "assets/neck/45.gif": "星爆花环",
+  "assets/neck/46.gif": "幻糖花环",
+  "assets/top_f/top_055.gif": "霓虹背心"
 }
