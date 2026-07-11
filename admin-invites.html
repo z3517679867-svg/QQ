@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>邀请码管理</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:"Microsoft YaHei",Tahoma,Arial,sans-serif;color:#073d66;background:#eef9ff;padding:20px}.wrap{max-width:980px;margin:0 auto}.card{border:1px solid #8ccde8;border-radius:10px;background:white;box-shadow:0 8px 24px rgba(0,72,120,.12);padding:16px;margin-bottom:14px}h1{font-size:22px;margin:0 0 12px}.grid{display:grid;grid-template-columns:1fr 180px 160px;gap:10px}@media(max-width:720px){.grid{grid-template-columns:1fr}}label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}input{width:100%;height:38px;border:1px solid #93cbe2;border-radius:5px;padding:0 10px}button{height:38px;border:1px solid #0879ae;border-radius:5px;color:white;font-weight:700;cursor:pointer;background:linear-gradient(180deg,#43bee9,#148fca)}.status{font-size:13px;color:#b42318}.ok{color:#18733c}.code{font-size:20px;font-weight:700;letter-spacing:.5px;color:#8a4a00;background:#fff6ca;border:1px solid #e7c957;border-radius:6px;padding:10px;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #d9edf6;text-align:left;padding:8px;vertical-align:top}th{background:#f0fbff}.muted{color:#6b8b9e;font-size:12px}.toplinks a{margin-right:10px;color:#0a76a8;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>一次性邀请码管理</h1>
+      <p class="muted">此页面不会写死管理员密钥。输入 Cloudflare Worker Secret 里的 CHAT_ADMIN_SECRET 后，可生成一码一人的邀请码。</p>
+      <div class="toplinks"><a href="chat-login.html">登录页</a><a href="register.html">注册页</a><a href="index.html">换装首页</a></div>
+    </div>
+    <div class="card">
+      <div class="grid">
+        <div><label for="secretInput">管理员密钥 CHAT_ADMIN_SECRET</label><input id="secretInput" type="password" placeholder="只保存在当前浏览器会话"></div>
+        <div><label for="daysInput">有效期天数</label><input id="daysInput" type="number" min="1" max="365" value="30"></div>
+        <div><label>&nbsp;</label><button id="createBtn" type="button">生成邀请码</button></div>
+      </div>
+      <div style="margin-top:10px"><label for="noteInput">备注</label><input id="noteInput" type="text" maxlength="160" placeholder="例如：发给某某"></div>
+      <div id="status" class="status"></div>
+      <div id="newCode" class="code" style="display:none"></div>
+    </div>
+    <div class="card">
+      <button id="refreshBtn" type="button">刷新邀请码列表</button>
+      <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>ID</th><th>前缀</th><th>状态</th><th>使用</th><th>备注</th><th>使用者</th><th>创建时间</th><th>过期时间</th></tr></thead><tbody id="inviteRows"><tr><td colspan="8" class="muted">尚未加载</td></tr></tbody></table></div>
+    </div>
+  </div>
+  <script>
+    const CHAT_API_BASE="https://chat-api.loveqshow.online";
+    const secretInput=document.getElementById('secretInput'),daysInput=document.getElementById('daysInput'),noteInput=document.getElementById('noteInput'),statusBox=document.getElementById('status'),newCodeBox=document.getElementById('newCode'),rows=document.getElementById('inviteRows');
+    secretInput.value=sessionStorage.getItem('qshow_admin_secret')||'';
+    function setStatus(msg,ok){statusBox.textContent=msg||'';statusBox.className=ok?'status ok':'status'}
+    function adminHeaders(){const secret=secretInput.value.trim();sessionStorage.setItem('qshow_admin_secret',secret);return {'Content-Type':'application/json','X-Admin-Secret':secret}}
+    async function createInvite(){newCodeBox.style.display='none';setStatus('正在生成……',true);try{const res=await fetch(CHAT_API_BASE+'/admin/invites',{method:'POST',cache:'no-store',headers:adminHeaders(),body:JSON.stringify({expires_in_days:Number(daysInput.value||30),note:noteInput.value||''})});const text=await res.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!res.ok)throw new Error(data&&data.message||'生成失败');newCodeBox.textContent=data.invite_code;newCodeBox.style.display='block';setStatus('已生成。这个完整邀请码只显示这一次，请立即复制给对应用户。',true);loadInvites()}catch(e){setStatus(e.message||'请求失败',false)}}
+    async function loadInvites(){setStatus('正在读取列表……',true);try{const res=await fetch(CHAT_API_BASE+'/admin/invites',{method:'GET',cache:'no-store',headers:adminHeaders()});const text=await res.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!res.ok)throw new Error(data&&data.message||'读取失败');const list=data.invites||[];rows.innerHTML=list.length?list.map(function(i){return '<tr><td>'+i.id+'</td><td>'+(i.code_prefix||'')+'</td><td>'+i.status+'</td><td>'+i.used_count+'/'+i.max_uses+'</td><td>'+(i.note||'')+'</td><td>'+((i.used_by_login_id||'')+(i.used_by_nickname?' / '+i.used_by_nickname:''))+'</td><td>'+(i.created_at||'')+'</td><td>'+(i.expires_at||'')+'</td></tr>'}).join(''):'<tr><td colspan="8" class="muted">暂无邀请码</td></tr>';setStatus('列表已刷新。',true)}catch(e){setStatus(e.message||'请求失败',false)}}
+    document.getElementById('createBtn').onclick=createInvite;document.getElementById('refreshBtn').onclick=loadInvites;
+  </script>
+</body>
+</html>

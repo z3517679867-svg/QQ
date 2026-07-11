@@ -8,35 +8,40 @@
   <style>
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"Microsoft YaHei",Tahoma,Arial,sans-serif;color:#073d66}
     body{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 16% 12%,rgba(255,255,255,.9) 0 4%,transparent 10%),radial-gradient(circle at 82% 16%,rgba(255,255,255,.8) 0 5%,transparent 12%),linear-gradient(180deg,#2a8df2 0%,#55b8ff 46%,#bceaff 66%,#71c84a 67%,#3ea63b 100%)}
-    .window{width:min(430px,94vw);border:1px solid #1389b9;border-radius:10px;overflow:hidden;background:rgba(241,252,255,.98);box-shadow:0 14px 38px rgba(0,51,95,.28)}
+    .window{width:min(450px,94vw);border:1px solid #1389b9;border-radius:10px;overflow:hidden;background:rgba(241,252,255,.98);box-shadow:0 14px 38px rgba(0,51,95,.28)}
     .titlebar{padding:10px 14px;font-weight:700;color:white;text-shadow:0 1px 0 rgba(0,0,0,.25);background:linear-gradient(180deg,#36b6e8 0%,#1596cf 52%,#0b7fb7 100%);border-bottom:1px solid #086b98}
     .content{padding:22px 20px 18px}.badge{width:70px;height:70px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;font-size:35px;background:linear-gradient(180deg,#fffef3,#d8f5ff);border:1px solid #8bcbe6;box-shadow:inset 0 1px 0 white,0 4px 12px rgba(4,115,160,.16)}
     h1{margin:0 0 7px;text-align:center;font-size:21px;color:#075d8c}.desc{margin:0 0 18px;text-align:center;font-size:12px;line-height:1.7;color:#53788f}
     label{display:block;margin-bottom:6px;font-size:12px;font-weight:700}.field-block{margin-bottom:13px}.field-hint{margin-top:5px;font-size:11px;line-height:1.5;color:#6b8b9e}.password-wrap{display:flex;gap:7px}input{width:100%;height:40px;padding:0 11px;border:1px solid #7eb9d3;border-radius:5px;outline:none;font-size:15px;background:white;color:#163f57}input:focus{border-color:#1a9bd3;box-shadow:0 0 0 3px rgba(40,170,220,.16)}
     button{border:1px solid #0879ae;border-radius:5px;color:white;font-weight:700;cursor:pointer;background:linear-gradient(180deg,#43bee9,#148fca);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}.show-btn{width:64px;flex:0 0 64px;color:#075a82;background:linear-gradient(180deg,#fff,#dff4fc);border-color:#8ac7df}.enter-btn{width:100%;height:42px;margin-top:14px;font-size:14px}button:disabled{opacity:.6;cursor:default}
-    .status{min-height:22px;margin-top:10px;font-size:12px;line-height:1.55;text-align:center;color:#b42318}.status.ok{color:#18733c}.footer{border-top:1px solid #c6e3ef;padding:10px 14px;text-align:center;font-size:11px;color:#6b8b9e;background:#edf9fd}.back-link{color:#0a76a8;text-decoration:none}.back-link:hover{text-decoration:underline}
+    .status{min-height:22px;margin-top:10px;font-size:12px;line-height:1.55;text-align:center;color:#b42318}.status.ok{color:#18733c}.footer{border-top:1px solid #c6e3ef;padding:10px 14px;text-align:center;font-size:11px;color:#6b8b9e;background:#edf9fd}.footer a{color:#0a76a8;text-decoration:none;margin:0 6px}.footer a:hover{text-decoration:underline}
   </style>
 </head>
 <body>
   <main class="window">
-    <div class="titlebar">私人聊天室 · 身份验证</div>
+    <div class="titlebar">私人聊天室 · 账号登录</div>
     <section class="content">
       <div class="badge" aria-hidden="true">🔐</div>
-      <h1>请输入聊天室密码</h1>
-      <p class="desc">密码只会发送到聊天室服务器验证，不会写入网页源码。验证通过后，本标签页可使用 12 小时。</p>
+      <h1>账号 ID + 密码登录</h1>
+      <p class="desc">只有使用一次性邀请码注册过的账号才能进入。登录成功后，本标签页可使用 12 小时。</p>
       <form id="loginForm" autocomplete="off">
         <div class="field-block">
-          <label for="nicknameInput">聊天室昵称</label>
-          <input id="nicknameInput" type="text" maxlength="12" autocomplete="nickname" placeholder="输入新昵称；留空则沿用当前昵称">
-          <div class="field-hint" id="nicknameHint">当前昵称：未设置</div>
+          <label for="loginIdInput">账号 ID</label>
+          <input id="loginIdInput" type="text" maxlength="32" autocomplete="username" required placeholder="例如 qshow_001">
+          <div class="field-hint">账号 ID 是固定身份；聊天室昵称可单独修改。</div>
         </div>
-        <label for="passwordInput">聊天室密码</label>
+        <div class="field-block">
+          <label for="nicknameInput">聊天室昵称（可选）</label>
+          <input id="nicknameInput" type="text" maxlength="12" autocomplete="nickname" placeholder="留空则使用账号当前昵称">
+          <div class="field-hint" id="nicknameHint">当前本地昵称：未设置</div>
+        </div>
+        <label for="passwordInput">登录密码</label>
         <div class="password-wrap"><input id="passwordInput" type="password" maxlength="128" autocomplete="current-password" required autofocus><button id="showButton" class="show-btn" type="button">显示</button></div>
         <button id="enterButton" class="enter-btn" type="submit">进入聊天室</button>
         <div id="status" class="status" aria-live="polite"></div>
       </form>
     </section>
-    <footer class="footer"><a class="back-link" href="index.html">返回换装首页</a></footer>
+    <footer class="footer"><a href="register.html">使用邀请码注册</a> · <a href="index.html">返回换装首页</a></footer>
   </main>
   <script>
     const CHAT_API_BASE="https://chat-api.loveqshow.online";
@@ -45,47 +50,20 @@
     const CHAT_AVATAR_KEY="qqshow_chat_avatar_v1";
     const CHAT_MEMBERS_KEY="qqshow_chat_members_v1";
     const CHAT_SAVED_NICKNAME_KEY="qqshow_chat_saved_nickname_v1";
-    const form=document.getElementById("loginForm"),input=document.getElementById("passwordInput"),nicknameInput=document.getElementById("nicknameInput"),nicknameHint=document.getElementById("nicknameHint"),enterButton=document.getElementById("enterButton"),showButton=document.getElementById("showButton"),statusBox=document.getElementById("status");
+    const CHAT_ACCOUNT_KEY="qqshow_chat_account_v1";
+    const form=document.getElementById("loginForm"),loginIdInput=document.getElementById("loginIdInput"),input=document.getElementById("passwordInput"),nicknameInput=document.getElementById("nicknameInput"),nicknameHint=document.getElementById("nicknameHint"),enterButton=document.getElementById("enterButton"),showButton=document.getElementById("showButton"),statusBox=document.getElementById("status");
     function createSafeRandomId(){if(window.crypto&&typeof window.crypto.randomUUID==="function")return "device_"+window.crypto.randomUUID().replace(/-/g,"");return "device_"+Date.now()+"_"+Math.random().toString(36).slice(2,12)}
     function getStableMemberId(){let id=localStorage.getItem(CHAT_DEVICE_MEMBER_KEY)||"";if(!id){id=createSafeRandomId();localStorage.setItem(CHAT_DEVICE_MEMBER_KEY,id)}return id}
     function readJsonStorage(key,fallback){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback}catch(_){return fallback}}
-    function getCurrentNickname(){
-      const direct=(localStorage.getItem(CHAT_SAVED_NICKNAME_KEY)||"").trim();
-      if(direct)return direct.slice(0,12);
-      const avatar=readJsonStorage(CHAT_AVATAR_KEY,null);
-      return avatar&&avatar.name?String(avatar.name).trim().slice(0,12):"";
-    }
-    function applyNicknameChange(rawName){
-      const next=String(rawName||"").trim().slice(0,12);
-      if(!next)return getCurrentNickname();
-      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY,next);
-      const avatar=readJsonStorage(CHAT_AVATAR_KEY,null);
-      if(avatar&&typeof avatar==="object"){avatar.name=next;localStorage.setItem(CHAT_AVATAR_KEY,JSON.stringify(avatar))}
-      const members=readJsonStorage(CHAT_MEMBERS_KEY,[]);
-      if(Array.isArray(members)){
-        const id=getStableMemberId();
-        const updated=members.map(function(member){
-          if(!member||typeof member!=="object")return member;
-          if(!member.id||member.id===id)return Object.assign({},member,{name:next});
-          return member;
-        });
-        localStorage.setItem(CHAT_MEMBERS_KEY,JSON.stringify(updated));
-      }
-      return next;
-    }
-    function initNicknameField(){
-      const current=getCurrentNickname();
-      nicknameHint.textContent=current?"当前昵称："+current:"当前昵称：未设置，请输入一个昵称";
-      nicknameInput.placeholder=current?"输入新昵称；留空则沿用“"+current+"”":"请输入聊天室昵称";
-    }
+    function getCurrentNickname(){const direct=(localStorage.getItem(CHAT_SAVED_NICKNAME_KEY)||"").trim();if(direct)return direct.slice(0,12);const avatar=readJsonStorage(CHAT_AVATAR_KEY,null);return avatar&&avatar.name?String(avatar.name).trim().slice(0,12):""}
+    function applyAccountAndNickname(user, rawName){const fallback=user&&user.nickname?String(user.nickname):getCurrentNickname();const next=String(rawName||fallback||"匿名小人").trim().slice(0,12)||"匿名小人";localStorage.setItem(CHAT_SAVED_NICKNAME_KEY,next);if(user)localStorage.setItem(CHAT_ACCOUNT_KEY,JSON.stringify(user));const avatar=readJsonStorage(CHAT_AVATAR_KEY,null);if(avatar&&typeof avatar==="object"){avatar.name=next;localStorage.setItem(CHAT_AVATAR_KEY,JSON.stringify(avatar))}const members=readJsonStorage(CHAT_MEMBERS_KEY,[]);if(Array.isArray(members)){const id=getStableMemberId();localStorage.setItem(CHAT_MEMBERS_KEY,JSON.stringify(members.map(function(member){if(!member||typeof member!=="object")return member;if(!member.id||member.id===id)return Object.assign({},member,{name:next});return member;})))}return next}
+    function initFields(){const current=getCurrentNickname();nicknameHint.textContent=current?"当前本地昵称："+current:"当前本地昵称：未设置";const account=readJsonStorage(CHAT_ACCOUNT_KEY,null);if(account&&account.login_id)loginIdInput.value=account.login_id}
     function showStatus(message,ok){statusBox.textContent=message||"";statusBox.className=ok?"status ok":"status"}
-    function clearExpiredToken(){const params=new URLSearchParams(location.search);if(params.get("reason")==="session_expired"){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);showStatus("登录已过期，请重新输入密码。",false)}}
-    let existingTokenValid=false;
-    async function checkExistingToken(){const token=sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY)||"";if(!token)return false;try{const response=await fetch(CHAT_API_BASE+"/auth/status",{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});if(!response.ok){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);existingTokenValid=false;return false}const data=await response.json();if(data&&data.authenticated){existingTokenValid=true;showStatus("当前登录仍有效，可直接修改昵称并进入聊天室。",true);input.removeAttribute("required");input.placeholder="当前登录有效，可留空";return true}}catch(_){}existingTokenValid=false;return false}
+    function clearExpiredToken(){const params=new URLSearchParams(location.search);if(params.get("reason")==="session_expired"){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);showStatus("登录已过期，请重新登录。",false)}}
+    async function checkExistingToken(){const token=sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY)||"";if(!token)return false;try{const response=await fetch(CHAT_API_BASE+"/auth/status",{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});if(!response.ok){sessionStorage.removeItem(CHAT_ACCESS_TOKEN_KEY);return false}const data=await response.json();if(data&&data.authenticated&&data.user){localStorage.setItem(CHAT_ACCOUNT_KEY,JSON.stringify(data.user));showStatus("当前登录仍有效，可直接进入聊天室。",true);return true}}catch(_){}return false}
     showButton.addEventListener("click",function(){const showing=input.type==="text";input.type=showing?"password":"text";showButton.textContent=showing?"显示":"隐藏";input.focus()});
-    form.addEventListener("submit",async function(event){event.preventDefault();const password=input.value;const requestedNickname=String(nicknameInput.value||"").trim().slice(0,12);const existingNickname=getCurrentNickname();if(!requestedNickname&&!existingNickname){showStatus("请先填写聊天室昵称。",false);nicknameInput.focus();return}if(existingTokenValid&&!password){const finalNickname=applyNicknameChange(requestedNickname);showStatus("昵称已保存为“"+finalNickname+"”，正在进入聊天室……",true);location.replace("chat.html");return}if(!password){showStatus("请输入聊天室密码。",false);input.focus();return}enterButton.disabled=true;showStatus("正在验证密码……",true);try{const response=await fetch(CHAT_API_BASE+"/auth/login",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({password,member_id:getStableMemberId()})});const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!response.ok){if(response.status===429){const seconds=Number(data&&data.retry_after_seconds||0);const minutes=seconds>0?Math.max(1,Math.ceil(seconds/60)):30;throw new Error("尝试次数过多，请约 "+minutes+" 分钟后再试。")}throw new Error(data&&data.message||"密码验证失败。")}if(!data||!data.token)throw new Error("服务器未返回有效通行令牌。");const finalNickname=applyNicknameChange(requestedNickname);sessionStorage.setItem(CHAT_ACCESS_TOKEN_KEY,data.token);showStatus("验证成功，昵称“"+finalNickname+"”将在聊天室中使用。",true);location.replace("chat.html")}catch(error){showStatus(error&&error.message?error.message:"网络连接失败，请稍后再试。",false);enterButton.disabled=false;input.select()}});
-    initNicknameField();
-    clearExpiredToken();checkExistingToken();
+    form.addEventListener("submit",async function(event){event.preventDefault();const login_id=String(loginIdInput.value||"").trim();const password=input.value;const nickname=String(nicknameInput.value||"").trim().slice(0,12);if(!login_id){showStatus("请输入账号 ID。",false);loginIdInput.focus();return}if(!password){showStatus("请输入登录密码。",false);input.focus();return}enterButton.disabled=true;showStatus("正在登录……",true);try{const response=await fetch(CHAT_API_BASE+"/auth/login",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({login_id,password,nickname,member_id:getStableMemberId()})});const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!response.ok){if(response.status===429){const seconds=Number(data&&data.retry_after_seconds||0);const minutes=seconds>0?Math.max(1,Math.ceil(seconds/60)):30;throw new Error("尝试次数过多，请约 "+minutes+" 分钟后再试。")}throw new Error(data&&data.message||"登录失败。")}if(!data||!data.token)throw new Error("服务器未返回有效登录令牌。");const finalNickname=applyAccountAndNickname(data.user,nickname);sessionStorage.setItem(CHAT_ACCESS_TOKEN_KEY,data.token);showStatus("登录成功，昵称“"+finalNickname+"”将在聊天室中使用。",true);location.replace("chat.html")}catch(error){showStatus(error&&error.message?error.message:"网络连接失败，请稍后再试。",false);enterButton.disabled=false;input.select()}});
+    initFields();clearExpiredToken();checkExistingToken();
   </script>
 </body>
 </html>

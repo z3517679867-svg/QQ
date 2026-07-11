@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>邀请码注册</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"Microsoft YaHei",Tahoma,Arial,sans-serif;color:#073d66}body{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(180deg,#2a8df2 0%,#55b8ff 46%,#bceaff 66%,#71c84a 67%,#3ea63b 100%)}.window{width:min(480px,94vw);border:1px solid #1389b9;border-radius:10px;overflow:hidden;background:rgba(241,252,255,.98);box-shadow:0 14px 38px rgba(0,51,95,.28)}.titlebar{padding:10px 14px;font-weight:700;color:white;background:linear-gradient(180deg,#36b6e8,#0b7fb7)}.content{padding:22px 20px 18px}.badge{width:70px;height:70px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;font-size:35px;background:linear-gradient(180deg,#fffef3,#d8f5ff);border:1px solid #8bcbe6}h1{margin:0 0 7px;text-align:center;font-size:21px;color:#075d8c}.desc{margin:0 0 18px;text-align:center;font-size:12px;line-height:1.7;color:#53788f}label{display:block;margin-bottom:6px;font-size:12px;font-weight:700}.field-block{margin-bottom:13px}.field-hint{margin-top:5px;font-size:11px;line-height:1.5;color:#6b8b9e}input{width:100%;height:40px;padding:0 11px;border:1px solid #7eb9d3;border-radius:5px;outline:none;font-size:15px;background:white;color:#163f57}input:focus{border-color:#1a9bd3;box-shadow:0 0 0 3px rgba(40,170,220,.16)}button{width:100%;height:42px;margin-top:8px;border:1px solid #0879ae;border-radius:5px;color:white;font-weight:700;cursor:pointer;background:linear-gradient(180deg,#43bee9,#148fca)}button:disabled{opacity:.6;cursor:default}.status{min-height:22px;margin-top:10px;font-size:12px;line-height:1.55;text-align:center;color:#b42318}.status.ok{color:#18733c}.footer{border-top:1px solid #c6e3ef;padding:10px 14px;text-align:center;font-size:11px;color:#6b8b9e;background:#edf9fd}.footer a{color:#0a76a8;text-decoration:none;margin:0 6px}.footer a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <main class="window">
+    <div class="titlebar">私人聊天室 · 邀请码注册</div>
+    <section class="content">
+      <div class="badge" aria-hidden="true">🎫</div>
+      <h1>使用一次性邀请码注册</h1>
+      <p class="desc">邀请码由管理员单独发放。每个邀请码默认只能注册一个账号，注册后以后只需账号 ID + 密码登录。</p>
+      <form id="registerForm" autocomplete="off">
+        <div class="field-block"><label for="inviteInput">邀请码</label><input id="inviteInput" type="text" maxlength="40" required placeholder="QSHOW-XXXX-XXXX-XXXX"></div>
+        <div class="field-block"><label for="loginIdInput">账号 ID</label><input id="loginIdInput" type="text" maxlength="32" required placeholder="3-32位字母/数字/下划线/短横线"><div class="field-hint">账号 ID 是固定身份，注册后不建议更改。</div></div>
+        <div class="field-block"><label for="nicknameInput">聊天室昵称</label><input id="nicknameInput" type="text" maxlength="12" required placeholder="最多12个字"></div>
+        <div class="field-block"><label for="passwordInput">登录密码</label><input id="passwordInput" type="password" maxlength="128" required placeholder="至少8位"></div>
+        <div class="field-block"><label for="confirmInput">确认密码</label><input id="confirmInput" type="password" maxlength="128" required></div>
+        <button id="registerButton" type="submit">注册并进入聊天室</button>
+        <div id="status" class="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <footer class="footer"><a href="chat-login.html">已有账号，返回登录</a> · <a href="index.html">返回换装首页</a></footer>
+  </main>
+  <script>
+    const CHAT_API_BASE="https://chat-api.loveqshow.online";
+    const CHAT_DEVICE_MEMBER_KEY="qqshow_chat_device_member_id_v2";
+    const CHAT_ACCESS_TOKEN_KEY="qqshow_chat_access_token_v1";
+    const CHAT_AVATAR_KEY="qqshow_chat_avatar_v1";
+    const CHAT_SAVED_NICKNAME_KEY="qqshow_chat_saved_nickname_v1";
+    const CHAT_ACCOUNT_KEY="qqshow_chat_account_v1";
+    const form=document.getElementById("registerForm"),inviteInput=document.getElementById("inviteInput"),loginIdInput=document.getElementById("loginIdInput"),nicknameInput=document.getElementById("nicknameInput"),passwordInput=document.getElementById("passwordInput"),confirmInput=document.getElementById("confirmInput"),registerButton=document.getElementById("registerButton"),statusBox=document.getElementById("status");
+    function createSafeRandomId(){if(window.crypto&&typeof window.crypto.randomUUID==="function")return "device_"+window.crypto.randomUUID().replace(/-/g,"");return "device_"+Date.now()+"_"+Math.random().toString(36).slice(2,12)}
+    function getStableMemberId(){let id=localStorage.getItem(CHAT_DEVICE_MEMBER_KEY)||"";if(!id){id=createSafeRandomId();localStorage.setItem(CHAT_DEVICE_MEMBER_KEY,id)}return id}
+    function readJsonStorage(key,fallback){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback}catch(_){return fallback}}
+    function saveNicknameAndAccount(user,nickname){const next=String(nickname||user&&user.nickname||"匿名小人").trim().slice(0,12)||"匿名小人";localStorage.setItem(CHAT_SAVED_NICKNAME_KEY,next);if(user)localStorage.setItem(CHAT_ACCOUNT_KEY,JSON.stringify(user));const avatar=readJsonStorage(CHAT_AVATAR_KEY,null);if(avatar&&typeof avatar==="object"){avatar.name=next;localStorage.setItem(CHAT_AVATAR_KEY,JSON.stringify(avatar))}return next}
+    function showStatus(message,ok){statusBox.textContent=message||"";statusBox.className=ok?"status ok":"status"}
+    form.addEventListener("submit",async function(event){event.preventDefault();const invite_code=String(inviteInput.value||"").trim();const login_id=String(loginIdInput.value||"").trim();const nickname=String(nicknameInput.value||"").trim().slice(0,12);const password=passwordInput.value;const confirm=confirmInput.value;if(password!==confirm){showStatus("两次输入的密码不一致。",false);confirmInput.focus();return}registerButton.disabled=true;showStatus("正在注册……",true);try{const response=await fetch(CHAT_API_BASE+"/auth/register",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({invite_code,login_id,password,nickname,member_id:getStableMemberId()})});const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}if(!response.ok)throw new Error(data&&data.message||"注册失败。");if(!data||!data.token)throw new Error("服务器未返回有效登录令牌。");saveNicknameAndAccount(data.user,nickname);sessionStorage.setItem(CHAT_ACCESS_TOKEN_KEY,data.token);showStatus("注册成功，正在进入聊天室……",true);location.replace("chat.html")}catch(error){showStatus(error&&error.message?error.message:"网络连接失败，请稍后再试。",false);registerButton.disabled=false}});
+  </script>
+</body>
+</html>
