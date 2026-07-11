@@ -1649,6 +1649,7 @@ h1 {
           <button class="save-btn" onclick="saveAvatar()">保存图片</button>
           <button class="reset-btn" onclick="resetAvatar()">恢复默认</button>
 <button class="notice-btn" onclick="openNotice()">声明</button>
+          <button class="chat-btn" onclick="enterChatRoomFromCottage()">进入聊天室</button>
         </div>
       </div>
 
@@ -2130,9 +2131,6 @@ h1 {
       updateClothesVisibility();
       updateGenderStatus();
       updateHistoryButtons();
-
-      // 页面恢复上次搭配后，立即把当前形象同步给聊天室。
-      syncLatestAvatarToChatStorage();
     }
 
     function addEmptyOption(realCategory, displayCategory) {
@@ -2453,11 +2451,6 @@ h1 {
         };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-
-        // 同步最新换装形象到聊天室缓存。
-        // 聊天室在加入房间时读取 qqshow_chat_avatar_v1，
-        // 因此每次换装保存后都要覆盖为当前最新图层。
-        syncLatestAvatarToChatStorage();
       } catch (error) {
         console.log("自动保存搭配失败：", error);
       }
@@ -3394,32 +3387,24 @@ h1 {
       return "";
     }
 
-    function syncLatestAvatarToChatStorage() {
-      try {
-        let previousAvatar = null;
-        try {
-          const raw = localStorage.getItem(CHAT_AVATAR_KEY);
-          previousAvatar = raw ? JSON.parse(raw) : null;
-        } catch (error) {
-          previousAvatar = null;
-        }
 
-        // 保留已经使用过的昵称；只更新服装、头发、身体与饰品图层。
-        const nickname = getSavedChatNickname();
-        const latestAvatar = buildChatAvatarData(nickname);
 
-        // 保留上次在聊天室中的位置，避免换装后重新进入时随机跳位。
-        if (previousAvatar && previousAvatar.pos && typeof previousAvatar.pos === "object") {
-          latestAvatar.pos = previousAvatar.pos;
-        }
-
-        saveChatMember(latestAvatar);
-      } catch (error) {
-        console.log("同步最新形象到聊天室失败：", error);
+    function enterChatRoomFromCottage() {
+      let nickname = getSavedChatNickname();
+      if (!nickname) {
+        const inputName = prompt("请输入聊天室昵称（未登录时仅用于单机版预览）", "游客");
+        if (inputName === null) return;
+        nickname = String(inputName || "游客").trim().slice(0, 12) || "游客";
       }
+      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, nickname);
+      const avatarData = buildChatAvatarData(nickname);
+      if (!avatarData.layers.length) {
+        const ok = confirm("当前形象没有可显示的聊天室图层，仍要进入聊天室吗？");
+        if (!ok) return;
+      }
+      saveChatMember(avatarData);
+      window.location.href = "chat.html";
     }
-
-
 
 
     init();

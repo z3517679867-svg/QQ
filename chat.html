@@ -1995,6 +1995,59 @@
       }
     }
 
+
+    /* =========================
+       账号制单机预览模式
+       未登录用户只显示自己的形象、房间背景和本地对话框；不显示在线用户、不加载历史消息，也不连接服务器。
+       ========================= */
+    body.single-player-mode .chat-main {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.single-player-mode .side-panel,
+    body.single-player-mode .mobile-member-list {
+      display: none !important;
+    }
+
+    body.single-player-mode #roomCapacity {
+      display: none !important;
+    }
+
+    body.single-player-mode .message-panel {
+      display: grid !important;
+    }
+
+    body.single-player-mode .room-wrap {
+      min-height: 0 !important;
+    }
+
+    body.single-player-mode .room-stage {
+      min-height: 520px !important;
+    }
+
+    .single-player-links {
+      display: inline-flex;
+      gap: 8px;
+      margin-left: 8px;
+      flex-wrap: wrap;
+      vertical-align: middle;
+    }
+
+    .single-player-links a {
+      color: #075984;
+      text-decoration: underline;
+      font-weight: 700;
+    }
+
+    @media (max-width: 760px) {
+      body.single-player-mode .room-stage {
+        min-height: calc(100dvh - 140px) !important;
+      }
+      body.single-player-mode .room-toolbar #systemAnnouncement.system-announcement-fixed {
+        min-height: 44px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -2018,7 +2071,7 @@
             <button class="bg-btn" type="button" data-room="stage" onclick="switchChatRoom('stage')">我的舞台</button>
             <button class="bg-btn" type="button" data-room="garden" onclick="switchChatRoom('garden')">园林之语</button>
           </div>
-          <div id="systemAnnouncement" class="system-announcement-fixed" aria-label="系统公告">系统公告：欢迎大家来玩耍，注意文明用语~如有不当言论同时被三个用户举报会被禁言</div>
+          <div id="systemAnnouncement" class="system-announcement-fixed" aria-label="系统公告">系统公告：欢迎大家来玩耍，聊天室仅合影使用~</div>
         </div>
         <div id="mobileMemberList" class="mobile-member-list" aria-label="手机端在线用户"></div>
         <div id="roomStage" class="room-stage"></div>
@@ -2043,6 +2096,7 @@
         <textarea id="messageInput" maxlength="80" placeholder="输入一句话，所有在线用户都会看到。按 Enter 发送，Shift+Enter 换行。"></textarea>
         <div class="button-row">
           <a class="link-btn" href="index.html" onclick="return goBackToCottage(event)">返回换装</a>
+          <button type="button" id="clearSingleAvatarsButton" onclick="clearSingleRoomAvatars()">清空聊天室形象</button>
           <button type="button" class="mobile-exit-btn" onclick="clearRoom()">退出聊天室</button>
           <button type="button" onclick="sendMessage()">发送</button>
         </div>
@@ -2064,6 +2118,7 @@
     const CHAT_SAVED_NICKNAME_KEY = "qqshow_chat_saved_nickname_v1";
     const CHAT_RETURN_REENTER_KEY = "qqshow_chat_return_reenter_v1";
     const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
+    const CHAT_SINGLE_MEMBERS_KEY = "qqshow_chat_single_members_v2";
     const CHAT_ROOM_BASELINE_PREFIX = "qqshow_chat_room_baseline_v1_";
     const CHAT_ROOM_LIMIT = 15;
     const CHAT_ADMIN_MEMBER_IDS = new Set(["device_281f7366cdaf4f91bfdd328c2abd7b5e"]);
@@ -2077,6 +2132,7 @@
     };
     let currentRoomKey = getSavedRoomKey();
     let currentRoomId = CHAT_ROOMS[currentRoomKey].id;
+    let singlePlayerMode = false;
 
     let chatSocket = null;
     let chatSocketReady = false;
@@ -2255,6 +2311,15 @@
     async function switchChatRoom(roomKey) {
       const key = CHAT_ROOMS[roomKey] ? roomKey : "castle";
       if (key === currentRoomKey) return;
+
+      if (singlePlayerMode) {
+        stopMemberPolling();
+        stopMessagePolling();
+        if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+        applyChatRoom(key);
+        renderSinglePlayerRoom();
+        return;
+      }
 
       // 切换房间前先停止旧房间的消息轮询，避免新房间尚未 join 时提前请求历史记录。
       stopMessagePolling();
@@ -3220,6 +3285,124 @@
       return avatar;
     }
 
+
+
+    function getSingleAvatarSignature(avatar) {
+      if (!avatar || typeof avatar !== "object") return "";
+      const layers = Array.isArray(avatar.layers) ? avatar.layers.slice().map(layer => ({
+        src: layer && layer.src ? String(layer.src) : "",
+        z: layer && Number.isFinite(Number(layer.z)) ? Number(layer.z) : 0,
+        label: layer && layer.label ? String(layer.label) : ""
+      })).sort((a, b) => a.z - b.z || a.src.localeCompare(b.src)) : [];
+      return JSON.stringify({
+        name: String(avatar.name || "").trim().slice(0, 12),
+        gender: avatar.gender || "f",
+        layers
+      });
+    }
+
+    function readSingleMembers() {
+      const raw = readJSON(CHAT_SINGLE_MEMBERS_KEY, []);
+      if (!Array.isArray(raw)) return [];
+      return raw.filter(member => member && typeof member === "object" && member.id && Array.isArray(member.layers));
+    }
+
+    function writeSingleMembers(members) {
+      const clean = Array.isArray(members) ? members.filter(Boolean).slice(-40) : [];
+      localStorage.setItem(CHAT_SINGLE_MEMBERS_KEY, JSON.stringify(clean));
+    }
+
+    function createSingleMemberFromAvatar(avatar, index) {
+      const pos = clampStagePosition(stagePositions[index % stagePositions.length] || { left: 50, top: 82 });
+      return {
+        id: "single_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10),
+        name: String(avatar.name || "游客").trim().slice(0, 12) || "游客",
+        gender: avatar.gender || "f",
+        layers: Array.isArray(avatar.layers) ? avatar.layers : [],
+        pos,
+        index,
+        backgroundKey: currentRoomKey,
+        localOnly: true,
+        singleSignature: getSingleAvatarSignature(avatar),
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    function refreshSinglePlayerMembersFromCurrentAvatar() {
+      let stored = readSingleMembers();
+      const avatar = readJSON(CHAT_AVATAR_KEY, null);
+
+      if (avatar && Array.isArray(avatar.layers) && avatar.layers.length) {
+        const cleanName = String(avatar.name || "").trim().slice(0, 12);
+        if (cleanName) {
+          avatar.name = cleanName;
+          const signature = getSingleAvatarSignature(avatar);
+          let latest = stored.slice().reverse().find(member => member.singleSignature === signature);
+          if (!latest) {
+            latest = createSingleMemberFromAvatar(avatar, stored.length);
+            stored.push(latest);
+            writeSingleMembers(stored);
+          }
+          currentMemberId = latest.id;
+          localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, currentMemberId);
+        }
+      }
+
+      stored = readSingleMembers();
+      if (!currentMemberId && stored.length) {
+        currentMemberId = stored[stored.length - 1].id;
+        localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, currentMemberId);
+      }
+
+      membersCache = stored.map((member, index) => Object.assign({}, member, { index }));
+      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify(membersCache));
+      return membersCache;
+    }
+
+    function clearSingleRoomAvatars() {
+      if (!confirm("确定清空当前单机聊天室里的所有本地形象吗？")) return;
+      localStorage.removeItem(CHAT_SINGLE_MEMBERS_KEY);
+      localStorage.removeItem(CHAT_MEMBERS_KEY);
+      localStorage.removeItem(CHAT_CURRENT_MEMBER_KEY);
+      currentMemberId = "";
+      membersCache = [];
+      messagesCache = [];
+      renderRoom();
+      renderMessages();
+      updateSystemLine("欢迎大家来玩耍，聊天室仅合影使用~");
+    }
+
+    function renderSinglePlayerRoom() {
+      singlePlayerMode = true;
+      document.body.classList.add("single-player-mode");
+      shouldReconnectSocket = false;
+      stopMemberPolling();
+      stopMessagePolling();
+      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+      closeChatSocket();
+
+      applyChatRoom(currentRoomKey);
+      setupStagePositionClick();
+      messagesCache = [];
+      lastLoadedMessageId = 0;
+      lastBubbleMessageId = 0;
+
+      refreshSinglePlayerMembersFromCurrentAvatar();
+
+      renderRoom();
+      renderMessages();
+
+      const cap = document.getElementById("roomCapacity");
+      if (cap) cap.innerText = "";
+      const announcement = document.getElementById("systemAnnouncement");
+      if (announcement) {
+        announcement.innerHTML = '系统公告：欢迎大家来玩耍，聊天室仅合影使用~';
+      }
+      updateSystemLine("欢迎大家来玩耍，聊天室仅合影使用~");
+      const input = document.getElementById("messageInput");
+      if (input) input.placeholder = "输入一句话，只在本地显示。按 Enter 发送，Shift+Enter 换行。";
+    }
+
     let httpMessagePollTimer = null;
     let heartbeatTimer = null;
     const HTTP_MESSAGE_POLL_INTERVAL_MS = 1500;
@@ -3428,6 +3611,16 @@
         localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatar));
       }
 
+      if (singlePlayerMode) {
+        if (membersCache.length) {
+          writeSingleMembers(membersCache);
+          localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify(membersCache));
+        }
+        if (!opts.skipRender) renderRoom();
+        if (!opts.silent) showBubble(currentMemberId, opts.bubbleText || "我换了个位置~");
+        return;
+      }
+
       if (!opts.skipRender) renderRoom();
       if (!opts.silent) showBubble(currentMemberId, opts.bubbleText || "我换了个位置~");
 
@@ -3565,6 +3758,28 @@
       const text = input.value.trim().replace(/\s+/g, " ").slice(0, 80);
       if (!text) return;
 
+      if (singlePlayerMode) {
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+
+        const currentMember = membersCache.find(member => member.id === currentMemberId) || null;
+        const localMessage = {
+          id: "local_single_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+          type: "chat",
+          memberId: currentMemberId || "local_single_member",
+          name: currentMember && currentMember.name ? currentMember.name : "我",
+          text: text,
+          createdAt: new Date().toISOString()
+        };
+
+        appendMessage(localMessage);
+        renderMessages();
+        if (currentMemberId) showBubble(currentMemberId, text);
+        rememberOwnBubbleText(text);
+        return;
+      }
+
       const members = getMembers();
       const currentMember = members.find(member => member.id === currentMemberId);
       if (!currentMember || currentMember.npc) {
@@ -3698,16 +3913,14 @@
     (function startChatPage() {
       const token = sessionStorage.getItem(CHAT_ACCESS_TOKEN_KEY) || "";
       if (token) {
+        document.body.classList.remove("single-player-mode");
+        singlePlayerMode = false;
         initOnlineChat();
         return;
       }
 
-      // 直接访问 /chat 时保留旧版聊天室页面外观，但不连接服务器、不加入在线列表。
-      applyChatRoom(currentRoomKey);
-      setupStagePositionClick();
-      renderRoom();
-      renderMessages();
-      updateSystemLine("欢迎进入多人怀旧换装大厅。");
+      // 未登录用户进入本地模式：不连接服务器、不加入在线列表、不加载历史消息；保留本地对话框。
+      renderSinglePlayerRoom();
     })();
   </script>
   <script>
