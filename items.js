@@ -3444,6 +3444,22 @@ window.ITEMS = {
     {
       "name": "蓝莓派装",
       "src": "assets/clothes_f/cloth_472.gif"
+    },
+    {
+      "name": "羽毛外套",
+      "src": "assets/clothes_f/cloth_473.gif"
+    },
+    {
+      "name": "羽毛套装",
+      "src": "assets/clothes_f/cloth_474.gif"
+    },
+    {
+      "name": "糖纸派装",
+      "src": "assets/clothes_f/cloth_475.gif"
+    },
+    {
+      "name": "银链茶裙",
+      "src": "assets/clothes_f/cloth_476.gif"
     }
   ],
   "clothes_m": [
