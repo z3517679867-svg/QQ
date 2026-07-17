@@ -1553,7 +1553,45 @@ h1 {
 
   
 
-    </style>
+    /* =========================
+       复古聊天室入口按钮
+       只新增入口，不改原有换装功能
+       ========================= */
+    .chat-btn {
+      border: 1px solid #4faed5 !important;
+      border-radius: 4px !important;
+      padding: 5px 8px !important;
+      color: #06466b !important;
+      font-size: 12px !important;
+      font-weight: 700;
+      line-height: 1.15 !important;
+      min-height: 26px;
+      white-space: nowrap;
+      cursor: pointer;
+      background: linear-gradient(180deg, #ffffff 0%, #d7ffe5 48%, #9af2bc 49%, #e9fff1 100%) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        0 2px 4px rgba(0,90,140,0.18) !important;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .chat-btn:hover {
+      background: linear-gradient(180deg, #ffffff 0%, #ffe99d 48%, #ffd953 49%, #fff4bc 100%) !important;
+      border-color: #e2a600 !important;
+      color: #7c4b00 !important;
+    }
+
+    @media (max-width: 760px) {
+      .chat-btn {
+        padding: 4px 6px !important;
+        font-size: 10.5px !important;
+        line-height: 1.1 !important;
+        min-height: 24px !important;
+        border-radius: 4px !important;
+      }
+    }
+
+  </style>
 
   <!-- Google Analytics 4 统计代码
        使用前必须把下面两个 G-EV19MGWG07 改成你自己的 GA4 Measurement ID
@@ -3216,7 +3254,160 @@ h1 {
 
 
 
-    </script>
+    /* =========================
+       复古聊天室多人在线版：
+       进入聊天室时只带入指定形象图层：
+       整套衣服 / 上衣+下装、身体、颈饰品、头发、帽子、眼镜、耳饰、脸饰品。
+       背景、前景、翅膀、手持物、特效、陪伴、文字、相框不会进入聊天室。
+       ========================= */
+    const CHAT_AVATAR_KEY = "qqshow_chat_avatar_v1";
+    const CHAT_MEMBERS_KEY = "qqshow_chat_members_v1";
+    const CHAT_CURRENT_MEMBER_KEY = "qqshow_chat_current_member_v1";
+    const CHAT_DEVICE_MEMBER_KEY = "qqshow_chat_device_member_id_v2";
+    const CHAT_CLEANUP_MEMBER_IDS_KEY = "qqshow_chat_cleanup_member_ids_v1";
+    const CHAT_SAVED_NICKNAME_KEY = "qqshow_chat_saved_nickname_v1";
+    const CHAT_RETURN_REENTER_KEY = "qqshow_chat_return_reenter_v1";
+    const CHAT_PRESERVE_HISTORY_KEY = "qqshow_chat_preserve_history_v1";
+
+    const CHAT_ALLOWED_LAYER_IDS = [
+      { key: "hair_back", id: "layer-hair-back", z: 25, label: "后发" },
+      { key: "clothes", id: "layer-clothes", z: 30, label: "整套衣服" },
+      { key: "bottom", id: "layer-bottom", z: 31, label: "下装" },
+      { key: "top", id: "layer-top", z: 32, label: "上衣" },
+      { key: "body", id: "layer-body", z: 40, label: "身体" },
+      { key: "neck", id: "layer-neck", z: 50, label: "颈饰品" },
+      { key: "hair", id: "layer-hair", z: 60, label: "前发" },
+      { key: "hat", id: "layer-hat", z: 70, label: "帽子" },
+      { key: "glasses", id: "layer-glasses", z: 80, label: "眼镜" },
+      { key: "earring", id: "layer-earring", z: 90, label: "耳饰" },
+      { key: "face", id: "layer-face", z: 100, label: "脸饰品1" },
+      { key: "face_2", id: "layer-face-2", z: 101, label: "脸饰品2" },
+      { key: "face_3", id: "layer-face-3", z: 102, label: "脸饰品3" }
+    ];
+
+    function getChatLayerSrc(layerId) {
+      const img = document.getElementById(layerId);
+      if (!img) return "";
+
+      const computed = window.getComputedStyle(img);
+      if (computed.display === "none" || computed.visibility === "hidden" || computed.opacity === "0") {
+        return "";
+      }
+
+      const src = img.currentSrc || img.getAttribute("src") || img.src || "";
+      if (!src || src.indexOf("data:,") >= 0) return "";
+
+      return src;
+    }
+
+
+    function createSafeRandomId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return "device_" + window.crypto.randomUUID().replace(/-/g, "");
+      }
+      return "device_" + Date.now() + "_" + Math.random().toString(36).slice(2, 12);
+    }
+
+    function getStableChatMemberId() {
+      let id = localStorage.getItem(CHAT_DEVICE_MEMBER_KEY) || localStorage.getItem(CHAT_CURRENT_MEMBER_KEY) || "";
+      if (!id) {
+        id = createSafeRandomId();
+      }
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, id);
+      localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, id);
+      return id;
+    }
+
+    function rememberOldMemberIdsForCleanup(nextId) {
+      const oldIds = [];
+      const currentId = localStorage.getItem(CHAT_CURRENT_MEMBER_KEY);
+      if (currentId && currentId !== nextId) oldIds.push(currentId);
+
+      readChatMembers().forEach(member => {
+        if (member && member.id && member.id !== nextId) oldIds.push(member.id);
+      });
+
+      const unique = Array.from(new Set(oldIds)).slice(0, 20);
+      if (unique.length) {
+        localStorage.setItem(CHAT_CLEANUP_MEMBER_IDS_KEY, JSON.stringify(unique));
+      }
+    }
+
+    function buildChatAvatarData(name) {
+      const layers = CHAT_ALLOWED_LAYER_IDS.map(layer => {
+        return {
+          key: layer.key,
+          id: layer.id,
+          z: layer.z,
+          label: layer.label,
+          src: getChatLayerSrc(layer.id)
+        };
+      }).filter(layer => !!layer.src);
+
+      return {
+        id: getStableChatMemberId(),
+        name: String(name || "").trim().slice(0, 12),
+        gender: currentGender,
+        createdAt: Date.now(),
+        layers: layers
+      };
+    }
+
+    function readChatMembers() {
+      try {
+        const raw = localStorage.getItem(CHAT_MEMBERS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveChatMember(avatarData) {
+      /*
+        防重复进入：同一台手机/电脑固定使用同一个 member id。
+        再次进入聊天室时只更新当前形象，不再新增一个在线角色。
+      */
+      rememberOldMemberIdsForCleanup(avatarData.id);
+      localStorage.setItem(CHAT_DEVICE_MEMBER_KEY, avatarData.id);
+      localStorage.setItem(CHAT_AVATAR_KEY, JSON.stringify(avatarData));
+      localStorage.setItem(CHAT_CURRENT_MEMBER_KEY, avatarData.id);
+      localStorage.setItem(CHAT_MEMBERS_KEY, JSON.stringify([avatarData]));
+    }
+
+    function getSavedChatNickname() {
+      const direct = localStorage.getItem(CHAT_SAVED_NICKNAME_KEY);
+      if (direct && String(direct).trim()) return String(direct).trim().slice(0, 12);
+      try {
+        const raw = localStorage.getItem(CHAT_AVATAR_KEY);
+        const avatar = raw ? JSON.parse(raw) : null;
+        if (avatar && avatar.name && String(avatar.name).trim()) return String(avatar.name).trim().slice(0, 12);
+      } catch (error) {}
+      return "";
+    }
+
+
+
+    function enterChatRoomFromCottage() {
+      let nickname = getSavedChatNickname();
+      if (!nickname) {
+        const inputName = prompt("请输入聊天室昵称（未登录时仅用于单机版预览）", "游客");
+        if (inputName === null) return;
+        nickname = String(inputName || "游客").trim().slice(0, 12) || "游客";
+      }
+      localStorage.setItem(CHAT_SAVED_NICKNAME_KEY, nickname);
+      const avatarData = buildChatAvatarData(nickname);
+      if (!avatarData.layers.length) {
+        const ok = confirm("当前形象没有可显示的聊天室图层，仍要进入聊天室吗？");
+        if (!ok) return;
+      }
+      saveChatMember(avatarData);
+      window.location.href = "chat.html";
+    }
+
+
+    init();
+  </script>
 
   <div id="noticeModal" class="notice-modal" aria-hidden="true">
     <div class="notice-mask" onclick="closeNotice()"></div>
